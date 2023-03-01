@@ -120,7 +120,7 @@ onInstall:
 actions:
   configure:
     - addVAPconfigureSettings
-    - validate
+    - validateOS
 
   addVAPconfigureSettings:
     cmd[cp]: |-
@@ -138,9 +138,17 @@ actions:
       grep -q CINDERCLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/CINDERCLIENT_INSECURE.*/CINDERCLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export CINDERCLIENT_INSECURE=true" >> ${globals.vap_settings}; }
       grep -q OS_PLACEMENT_API_VERSION ${globals.vap_settings} && { sed -i "s/OS_PLACEMENT_API_VERSION.*/OS_PLACEMENT_API_VERSION=1.22/" ${globals.vap_settings}; } || { echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${globals.vap_settings}; }
 
-  validate:
-    - cmd[cp]: |-
-        echo validate;
+  validateOS:
+    script: |
+        var command = "source ${globals.vap_settings} && ${globals.openstack} stack list -f json";
+        resp = api.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": command }]), true);
+        if (resp.result != 0) return resp;
+        try {
+          projectList = JSON.parse(resp.responses[0].out) || [];
+        } catch (ex) {
+          return { type: "error", message: "cannot parse project list: " + ex }
+        }
+        return { result: 0, projectList: projectList};
 
   installOSclient: 
     - cmd[cp]: |- 
@@ -164,4 +172,21 @@ actions:
         --parameter "storage_policy=default" \
         --parameter "key_name={$vhi_ssh_key}" \
         --wait
-       
+   
+
+  exportEnvs: 
+    - cmd[cp]: |-
+        export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}
+        export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}
+        export OS_PROJECT_NAME=${settings.vhi_proj_name}
+        export OS_USERNAME=${settings.vhi_username}
+        export OS_PASSWORD=${settings.vhi_password}
+        export OS_AUTH_URL=${settings.vhi_url}
+        export OS_IDENTITY_API_VERSION=3
+        export OS_AUTH_TYPE=password
+        export OS_INSECURE=true
+        export NOVACLIENT_INSECURE=true
+        export NEUTRONCLIENT_INSECURE=true
+        export CINDERCLIENT_INSECURE=true
+        export OS_PLACEMENT_API_VERSION=1.22
+    
