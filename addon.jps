@@ -39,62 +39,75 @@ settings:
         caption: VHI URL 
         tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
         
+      - type: string 
+        name: vap_stack_name 
+        caption: VAP Stack Name 
+        tooltip: "<span>VAP Stack Name</span>"
 
   create:
-      fields: 
-      - type: list 
-        name: vhi_flavor
-        caption: VHI Flavor 
-        tooltip: "<span>Choose VM flavor. It should be worse than PoC requirements</span>" 
-        values:
-          value1: xxlarge
-          value2: tiny
-          value3: small
-          value4: medium
-          value5: large
-          value6: xlarge
-          value7: xxxlarge
-          value8: xxxxlarge
-          value9: vhislave
-          value10: paas-usernode
-          value11: cputest2s
-          value12: cputest2
-          value13: cputest21
-          value14: vhi-main
-          value15: vhimaster
-      - type: list 
-        name: flavor_cpu_ram
-        caption: Flavor RAM&CPU
-        tooltip: "<span>Choose VM flavor by RAM and CPU. It should be worse than PoC requirements</span>" 
-        depends_on: vhi_flavor
-        values:
-          value1: 32768 MB 8 vCPU
-          value2: 512 MB 1 vCPU
-          value3: 2048 MB 1 vCPU
-          value4: 4096 MB 2 vCPU
-          value5: 8192 MB 4 vCPU
-          value6: 16384 MB 8 vCPU
-          value7: 65536 MB 8 vCPU
-          value8: 131072 MB 24 vCPU
-          value9: 32768 MB 16 vCPU
-          value10: 49152 MB 24 vCPU
-          value11: 8192 MB 2 vCPU
-          value12: 8192 MB 2 vCPU
-          value13: 8192 MB 2 vCPU
-          value14: 43008 MB 16 vCPU
-          value15: 43008 MB 16 vCPU
-          value16: 32768 MB 16 vCPU        
-      - type: string 
-        name: vap_image
-        caption: VAP Image
-        tooltip: "<span>Specify VAP image that is available on VHI cluster</span>" 
-      - type: string 
-        name: pub_subnet 
-        caption: Public Subnet  
-        tooltip: "<span>Specify VHI cluster public subnet name</span>" 
-      - caption: SSH Key Name 
-        type: string 
-        name: vhi_ssh_key 
+    fields: []
+    onBeforeInit: |
+      var subnetList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack subnet list -f json' }]), true).responses[0].out;
+      var flavorList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack flavor list -f json' }]), true).responses[0].out;
+      var vapStackName = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && echo $VAP_STACK_NAME' }]), true).responses[0].out;      
+      var subnetListPrepared = prepareSubnets(JSON.parse(subnetList));
+      var flavorListPrepared = prepareFlavors(JSON.parse(flavorList));
+      
+      function prepareSubnets(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Subnet,
+            value: values[i].Name
+          });
+        }
+        return aResultValues;
+      }
+
+      function prepareFlavors(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
+            value: values[i].Name
+          });
+        }
+        return aResultValues;
+      }
+
+      settings.fields.push({
+        "caption": "VAP Stack Name",
+        "type": "string",
+        "tooltip": "VAP Stack Name",          
+        "name": "vap_stack_name",
+        "required": true,
+        "values": vapStackName
+      }, {
+        "caption": "RAM&CPU Infra",
+        "type": "list",
+        "tooltip": "RAM&CPU Infra",          
+        "name": "infra_cpu_ram",
+        "required": true,
+        "values": flavorListPrepared
+      }, {
+        "caption": "RAM&CPU User",
+        "type": "list",
+        "tooltip": "RAM&CPU User",          
+        "name": "user_cpu_ram",
+        "required": true,
+        "values": flavorListPrepared
+      }, {
+        "caption": "Subnet",
+        "type": "list",
+        "tooltip": "Subnet",          
+        "name": "subnet",
+        "required": true,
+        "values": subnetListPrepared
+      })
+
+      return settings;
 
 buttons:
 - caption: Configure
@@ -137,6 +150,7 @@ actions:
       grep -q NEUTRONCLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/NEUTRONCLIENT_INSECURE.*/NEUTRONCLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export NEUTRONCLIENT_INSECURE=true" >> ${globals.vap_settings}; }
       grep -q CINDERCLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/CINDERCLIENT_INSECURE.*/CINDERCLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export CINDERCLIENT_INSECURE=true" >> ${globals.vap_settings}; }
       grep -q OS_PLACEMENT_API_VERSION ${globals.vap_settings} && { sed -i "s/OS_PLACEMENT_API_VERSION.*/OS_PLACEMENT_API_VERSION=1.22/" ${globals.vap_settings}; } || { echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${globals.vap_settings}; }
+      grep -q VAP_STACK_NAME ${globals.vap_settings} && { sed -i "s/VAP_STACK_NAME.*/VAP_STACK_NAME=${settings.vap_stack_name}/" ${globals.vap_settings}; } || { echo "export VAP_STACK_NAME=${settings.vap_stack_name}" >> ${globals.vap_settings}; }
 
   validateOS:
     script: |
