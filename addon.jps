@@ -19,19 +19,18 @@ settings:
         name: vhi_username 
         caption: Username 
         tooltip: "<span>Specify OS project username you will use to create VMs</span>"
-        value: Vadym.Lobzakov@virtuozzo.com
+ 
       - type: string
         inputType: password
         name: vhi_password 
         caption: Password 
         tooltip: "<span>Specify OS project username's password you will use to create VMs</span>"
-        value: V208-padlo
+        
       - type: string 
         name: vhi_url 
         caption: VHI URL 
         tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
-        value: https://eu4-cloud.virtuozzo.com:5000/v3
-
+        
   create:
       fields: 
       - type: list 
