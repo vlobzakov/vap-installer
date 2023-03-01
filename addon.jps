@@ -1,0 +1,160 @@
+type: update 
+jpsVersion: 7.1.1 
+name: VAP Installer 
+id: vap-installer 
+targetEditions: any 
+logo: https://raw.githubusercontent.com/vlobzakov/images/main/logo-small.png
+description: VAP installer 
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/backup-addon/main 
+
+settings: 
+  configure: 
+    fields: 
+      - type: string 
+        name: vhi_proj_name 
+        caption: VHI Project Name 
+        tooltip: "<span>Specify project name you will use to create VMs in</span>"
+        value: cmp
+      - type: string 
+        name: vhi_username 
+        caption: Username 
+        tooltip: "<span>Specify OS project username you will use to create VMs</span>"
+        value: Vadym.Lobzakov@virtuozzo.com
+      - type: string
+        inputType: password
+        name: vhi_password 
+        caption: Password 
+        tooltip: "<span>Specify OS project username's password you will use to create VMs</span>"
+        value: V208-padlo
+      - type: string 
+        name: vhi_url 
+        caption: VHI URL 
+        tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
+        value: https://eu4-cloud.virtuozzo.com:5000/v3
+
+  create:
+      fields: 
+      - type: list 
+        name: vhi_flavor
+        caption: VHI Flavor 
+        tooltip: "<span>Choose VM flavor. It should be worse than PoC requirements</span>" 
+        values:
+          value1: xxlarge
+          value2: tiny
+          value3: small
+          value4: medium
+          value5: large
+          value6: xlarge
+          value7: xxxlarge
+          value8: xxxxlarge
+          value9: vhislave
+          value10: paas-usernode
+          value11: cputest2s
+          value12: cputest2
+          value13: cputest21
+          value14: vhi-main
+          value15: vhimaster
+      - type: list 
+        name: flavor_cpu_ram
+        caption: Flavor RAM&CPU
+        tooltip: "<span>Choose VM flavor by RAM and CPU. It should be worse than PoC requirements</span>" 
+        depends_on: vhi_flavor
+        values:
+          value1: 32768 MB 8 vCPU
+          value2: 512 MB 1 vCPU
+          value3: 2048 MB 1 vCPU
+          value4: 4096 MB 2 vCPU
+          value5: 8192 MB 4 vCPU
+          value6: 16384 MB 8 vCPU
+          value7: 65536 MB 8 vCPU
+          value8: 131072 MB 24 vCPU
+          value9: 32768 MB 16 vCPU
+          value10: 49152 MB 24 vCPU
+          value11: 8192 MB 2 vCPU
+          value12: 8192 MB 2 vCPU
+          value13: 8192 MB 2 vCPU
+          value14: 43008 MB 16 vCPU
+          value15: 43008 MB 16 vCPU
+          value16: 32768 MB 16 vCPU        
+      - type: string 
+        name: vap_image
+        caption: VAP Image
+        tooltip: "<span>Specify VAP image that is available on VHI cluster</span>" 
+      - type: string 
+        name: pub_subnet 
+        caption: Public Subnet  
+        tooltip: "<span>Specify VHI cluster public subnet name</span>" 
+      - caption: SSH Key Name 
+        type: string 
+        name: vhi_ssh_key 
+
+buttons: 
+  caption: Create VM
+  loadingText: Creating VMs...
+  action: create
+  successText: The scheduler has been successfully updated.
+
+buttons:
+- caption: Configure
+  action: configure
+  settings: configure
+  title: Configure detail
+  loadingText: Configuring...
+  submitButtonText: Configure
+  successText: Configured successfully.
+  
+- caption: New VAP
+  action: create
+  loadingText: Creating VAP...
+  settings: create
+  successText: The VAP have been successfully created.
+  title: New VAP
+  submitButtonText: New VAP
+  confirmText: New VAP?
+
+
+
+onInstall: 
+  - installOSclient 
+
+actions: 
+  installOSclient: 
+    - cmd[cp]: |- 
+        pip install python-openstackclient
+        pip install python-heatclient
+  create: 
+    - cmd[cp]: 
+        openstack stack create lwopoc -t VAP.yaml \
+        --parameter "image=vap-82-2_20230217113716" \
+        --parameter "user_hosts_count=3" \
+        --parameter "public_network=public" \
+        --parameter "public_subnet=subnet_23.109.29.0" \
+        --parameter "infra_flavor=${vhi_flavor}" \
+        --parameter "user_flavor=${vhi_flavor}" \
+        --parameter "infra_root_volume_size=100" \
+        --parameter "user_root_volume_size=100" \
+        --parameter "infra_vz_volume_size=400" \
+        --parameter "user_vz_volume_size=800" \
+        --parameter "infra_swap_volume_size=8" \
+        --parameter "user_swap_volume_size=8" \
+        --parameter "storage_policy=default" \
+        --parameter "key_name={$vhi_ssh_key}" \
+        --wait
+   
+
+  exportEnvs: 
+    - cmd[cp]: |-
+        export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}
+        export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}
+        export OS_PROJECT_NAME=${settings.vhi_proj_name}
+        export OS_USERNAME=${settings.vhi_username}
+        export OS_PASSWORD=${settings.vhi_password}
+        export OS_AUTH_URL=${settings.vhi_url}
+        export OS_IDENTITY_API_VERSION=3
+        export OS_AUTH_TYPE=password
+        export OS_INSECURE=true
+        export NOVACLIENT_INSECURE=true
+        export NEUTRONCLIENT_INSECURE=true
+        export CINDERCLIENT_INSECURE=true
+        export OS_PLACEMENT_API_VERSION=1.22
+    
