@@ -83,7 +83,7 @@ settings:
         "tooltip": "VAP Stack Name",          
         "name": "vap_stack_name",
         "required": true,
-        "values": vapStackName
+        "value": vapStackName
       }, {
         "caption": "RAM&CPU Infra",
         "type": "list",
@@ -99,12 +99,26 @@ settings:
         "required": true,
         "values": flavorListPrepared
       }, {
+        "caption": "User Node Count",
+        "type": "spinner",
+        "tooltip": "User Node Count",          
+        "name": "user_node_count",
+        "min": 1,
+        "max": 5
+      }, {
         "caption": "Subnet",
         "type": "list",
         "tooltip": "Subnet",          
         "name": "subnet",
         "required": true,
         "values": subnetListPrepared
+      }, {
+        "caption": "Image Name",
+        "type": "string",
+        "tooltip": "Image Name",          
+        "name": "image_name",
+        "required": true,
+        "value": "vap-82-2_20230217113716"
       })
 
       return settings;
