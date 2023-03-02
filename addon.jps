@@ -87,8 +87,7 @@ settings:
       }, {
         "caption": "RAM&CPU Infra",
         "type": "list",
-        "tooltip": "<img width=\'760\' height=\'380\' src=\'https\://raw.githubusercontent.com/vlobzakov/vap-installer/main/images/hw-requirements-INFRA.png'>  
-",          
+        "tooltip": "<h3>Hardware Requirements for Infra</h3>Make sure the Flavor fits requirements outlined by Red for required installtion type.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a> <img width='314' height='280' src='https://raw.githubusercontent.com/jelastic/icons/master/mysql/tip-cluster-mm.svg?sanitize=true'>",          
         "name": "infra_cpu_ram",
         "required": true,
         "values": flavorListPrepared
