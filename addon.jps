@@ -142,12 +142,21 @@ buttons:
   confirmText: New VAP?
 
 onInstall: 
-  - installOSclient 
+  - installOSclient
+  - getProjectsConf
 
 actions:
   configure:
     - addVAPconfigureSettings
     - validateOS
+
+  getProjectsConf:
+    cmd[cp]: |-
+      wget ${baseUrl}/configs/VAP.yaml -O /var/www/webroot/VAP.yaml;
+      wget ${baseUrl}/configs/VAP_user.yaml -O /var/www/webroot/VAP_user.yaml;
+      wget ${baseUrl}/configs/infra.sh -O /var/www/webroot/infra.sh;
+      wget ${baseUrl}/configs/project.sh -O /var/www/webroot/project.sh;
+      wget ${baseUrl}/configs/user.sh -O /var/www/webroot/user.sh;
 
   addVAPconfigureSettings:
     cmd[cp]: |-
@@ -182,39 +191,31 @@ actions:
     - cmd[cp]: |- 
         pip install python-openstackclient
         pip install python-heatclient
-  create: 
-    - cmd[cp]: 
-        openstack stack create lwopoc -t VAP.yaml \
-        --parameter "image=vap-82-2_20230217113716" \
-        --parameter "user_hosts_count=3" \
+
+  create:
+    - log: VAP Stack Name - ${settings.vap_stack_name}
+    - log: RAM&CPU Infra - ${settings.infra_cpu_ram}
+    - log: RAM&CPU User - ${settings.user_cpu_ram}
+    - log: User Node Count - ${settings.user_node_count}
+    - log: Subnet - ${settings.subnet}
+    - log: Image Name - ${settings.image_name}
+    - test
+
+  test: 
+    - cmd[cp]: |-
+        source ${globals.vap_settings} && ${globals.openstack} stack create ${settings.vap_stack_name} -t VAP.yaml \
+        --parameter "image=${settings.image_name}" \
+        --parameter "user_hosts_count=${settings.user_node_count}" \
         --parameter "public_network=public" \
-        --parameter "public_subnet=subnet_23.109.29.0" \
-        --parameter "infra_flavor=${vhi_flavor}" \
-        --parameter "user_flavor=${vhi_flavor}" \
+        --parameter "public_subnet=${settings.subnet}" \
+        --parameter "infra_flavor=${settings.infra_cpu_ram}" \
+        --parameter "user_flavor=${settings.user_cpu_ram}" \
         --parameter "infra_root_volume_size=100" \
         --parameter "user_root_volume_size=100" \
         --parameter "infra_vz_volume_size=400" \
         --parameter "user_vz_volume_size=800" \
         --parameter "infra_swap_volume_size=8" \
         --parameter "user_swap_volume_size=8" \
-        --parameter "storage_policy=default" \
-        --parameter "key_name={$vhi_ssh_key}" \
+        --parameter "key_name=vap-installer-demo" \
         --wait
-   
-
-  exportEnvs: 
-    - cmd[cp]: |-
-        export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}
-        export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}
-        export OS_PROJECT_NAME=${settings.vhi_proj_name}
-        export OS_USERNAME=${settings.vhi_username}
-        export OS_PASSWORD=${settings.vhi_password}
-        export OS_AUTH_URL=${settings.vhi_url}
-        export OS_IDENTITY_API_VERSION=3
-        export OS_AUTH_TYPE=password
-        export OS_INSECURE=true
-        export NOVACLIENT_INSECURE=true
-        export NEUTRONCLIENT_INSECURE=true
-        export CINDERCLIENT_INSECURE=true
-        export OS_PLACEMENT_API_VERSION=1.22
-    
+       
