@@ -88,9 +88,9 @@ settings:
         "caption": "RAM&CPU Infra",
         "type": "list",
         "tooltip": "text: Pick RAM&CPU for Infra nodes according to the requirements.
-           <p style="font-size:18px">Redis cluster topologies for multi-region distribution</p><br>
+           <p style="font-size:18px">VAP Hardware Requirements. For Infra Nodes</p><br>
                    <table  style="width:100%"><td></td><th style="text-align:center">Maximum Performance</th><th></th><th style="text-align:center">Maximum Reliability</th></table>
-                   <img width='760' height='380' src='https://raw.githubusercontent.com/DmytroZubelevych/redis-multiregion/master/images/high-performance-HA-topology-black-bg4.svg?sanitize=true'>  
+                   <img width='760' height='380' src='https://raw.githubusercontent.com/vlobzakov/vap-installer/main/images/hw-requirements-INFRA.png'>  
 ",          
         "name": "infra_cpu_ram",
         "required": true,
