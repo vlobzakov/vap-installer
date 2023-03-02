@@ -92,7 +92,7 @@ settings:
           "tipParams": null,
           "maxWidth": 830,
           "minWidth": 300
-      },
+        },
         "name": "infra_cpu_ram",
         "required": true,
         "values": flavorListPrepared
@@ -210,6 +210,12 @@ actions:
     - log: Subnet - ${settings.subnet}
     - log: Image Name - ${settings.image_name}
     - test
+    - getWebinstallerLink
+    - script: |
+        return {
+          type: "success",
+          message: "Web Installer Link: [${globals.webinstaller_link}](${globals.webinstaller_link})"
+        }
 
   test: 
     - cmd[cp]: |-
@@ -228,4 +234,10 @@ actions:
         --parameter "user_swap_volume_size=8" \
         --parameter "key_name=vap-installer-demo" \
         --wait
-       
+
+  getWebinstallerLink:
+    - script: |
+        var command = "source ${globals.vap_settings} && ${globals.openstack} stack output show ${settings.vap_stack_name} --all -f json";
+        var resp = api.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": command }]), true).responses[0].out;
+        var webinstaller_link = JSON.parse(resp).webinstaller_link;
+        return {result: 0, onAfterReturn:{ setGlobals:{ webinstaller_link: JSON.parse(webinstaller_link).output_value }}}
