@@ -116,16 +116,16 @@ settings:
         "min": 1,
         "max": 5
       }, {
-        "caption": "Subnet",
+        "caption": "VHI Cluster Subnet",
         "type": "list",
-        "tooltip": "Subnet",          
+        "tooltip": "Select required VHI cluster subnet",          
         "name": "subnet",
         "required": true,
         "values": subnetListPrepared
       }, {
-        "caption": "Image Name",
+        "caption": "VAP Image Name",
         "type": "string",
-        "tooltip": "Image Name",          
+        "tooltip": "Select required qcow2 VAP image name",          
         "name": "image_name",
         "required": true,
         "value": "vap-82-2_20230301234215"
