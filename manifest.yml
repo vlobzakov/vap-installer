@@ -2,7 +2,7 @@ type: install
 name: VAP Installer 
 id: vap-installer
 targetEditions: any 
-logo: https://raw.githubusercontent.com/vlobzakov/images/main/logo-small.png
+logo: /images/logo-small.png
 description: Get your PaaS installed in a minutes on top of any VHI cluster or in Virutozzo Hybrid Cloud in automatic mode. After application installation open VAP Installer add-on, provide credentials, endpoint, license and deploy new Virtuozzo Application Platform.
 baseUrl: https://raw.githubusercontent.com/sych74/vap-installer/main
 
