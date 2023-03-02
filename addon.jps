@@ -118,7 +118,7 @@ settings:
         "tooltip": "Image Name",          
         "name": "image_name",
         "required": true,
-        "value": "vap-82-2_20230217113716"
+        "value": "vap-82-2_20230301234215"
       })
 
       return settings;
