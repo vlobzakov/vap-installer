@@ -136,7 +136,7 @@ buttons:
 - caption: Configure
   action: configure
   settings: configure
-  title: Configure detail
+  title: Configure VHI Cluster Detail
   loadingText: Configuring...
   submitButtonText: Configure
   successText: Configured successfully.
@@ -148,7 +148,7 @@ buttons:
   successText: The VAP have been successfully created.
   title: New VAP
   submitButtonText: New VAP
-  confirmText: New VAP?
+  confirmText: Create New VAP?
 
 onInstall: 
   - installOSclient
