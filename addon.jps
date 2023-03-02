@@ -87,14 +87,24 @@ settings:
       }, {
         "caption": "RAM&CPU Infra",
         "type": "list",
-        "tooltip": "<h3>Hardware Requirements for Infra</h3>Make sure the Flavor fits requirements outlined by Red for required installtion type.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a> <img width='314' height='280' src='https://raw.githubusercontent.com/jelastic/icons/master/mysql/tip-cluster-mm.svg?sanitize=true'>",          
+        "tooltip": {
+          "text": "<h3>Hardware Requirements for Infra</h3>Make sure the Flavor fits requirements outlined by Red for required installtion type.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a><p></p> <img width='800' height='250' src='https://raw.githubusercontent.com/sych74/vap-installer/main/images/hw-requirements-INFRA.png'>",
+          "tipParams": null,
+          "maxWidth": 830,
+          "minWidth": 300
+      },
         "name": "infra_cpu_ram",
         "required": true,
         "values": flavorListPrepared
       }, {
         "caption": "RAM&CPU User",
         "type": "list",
-        "tooltip": "RAM&CPU User",          
+        "tooltip": {
+          "text": "<h3>Hardware Requirements for User Nodes</h3>Make sure the Flavor fits requirements outlined by Red for required installtion type.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a><p></p> <img width='800' height='250' src='https://raw.githubusercontent.com/sych74/vap-installer/main/images/hw-requirements-USER.png'>",
+          "tipParams": null,
+          "maxWidth": 830,
+          "minWidth": 300
+      },
         "name": "user_cpu_ram",
         "required": true,
         "values": flavorListPrepared
