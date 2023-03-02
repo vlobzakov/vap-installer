@@ -87,7 +87,8 @@ settings:
       }, {
         "caption": "RAM&CPU Infra",
         "type": "list",
-        "tooltip": "RAM&CPU Infra",          
+        "tooltip": "<img width=\'760\' height=\'380\' src=\'https\://raw.githubusercontent.com/vlobzakov/vap-installer/main/images/hw-requirements-INFRA.png'>  
+",          
         "name": "infra_cpu_ram",
         "required": true,
         "values": flavorListPrepared
