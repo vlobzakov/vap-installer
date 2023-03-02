@@ -46,25 +46,24 @@ settings:
 
   create:
     fields: []
-    onBeforeInit: |
+    onBeforeInit: |   
+      var subnetListPrepared = [], flavorListPrepared = [], publicIDs, subnetID;
+      var networkList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": 'source ${globals.vap_settings} && ${globals.openstack} network list -f json' }]), true).responses[0].out;
       var subnetList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack subnet list -f json' }]), true).responses[0].out;
       var flavorList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack flavor list -f json' }]), true).responses[0].out;
       var vapStackName = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && echo $VAP_STACK_NAME' }]), true).responses[0].out;      
-      var subnetListPrepared = prepareSubnets(JSON.parse(subnetList));
-      var flavorListPrepared = prepareFlavors(JSON.parse(flavorList));
-      
-      function prepareSubnets(values) {
-        var aResultValues = [];
-        values = values || [];
-        for (var i = 0, n = values.length; i < n; i++) {
-          aResultValues.push({
-            caption: values[i].Subnet,
-            value: values[i].Name
-          });
-        }
-        return aResultValues;
+
+      publicIDs = JSON.parse(networkList).find(x => x.Name === 'public').Subnets;
+      for (var i = 0, n = publicIDs.length; i < n; i++) {
+        subnetID = JSON.parse(subnetList).find(x => x.ID === publicIDs[i]);
+        subnetListPrepared.push({
+          caption: subnetID.Subnet,
+          value: subnetID.Name
+        });
       }
 
+      var flavorListPrepared = prepareFlavors(JSON.parse(flavorList));
+      
       function prepareFlavors(values) {
         var aResultValues = [];
         values = values || [];
