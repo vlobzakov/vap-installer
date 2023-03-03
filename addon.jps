@@ -22,27 +22,32 @@ settings:
         name: vhi_proj_name 
         caption: VHI Project Name 
         tooltip: "<span>Specify project name you will use to create VMs in</span>"
+        required: true
         value: cmp
       - type: string 
         name: vhi_username 
         caption: Username 
         tooltip: "<span>Specify OS project username you will use to create VMs</span>"
+        required: true
         
       - type: string
         inputType: password
         name: vhi_password 
         caption: Password 
         tooltip: "<span>Specify OS project username's password you will use to create VMs</span>"
+        required: true
         
       - type: string 
         name: vhi_url 
         caption: VHI URL 
         tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
+        required: true
         
       - type: string 
         name: vap_stack_name 
         caption: VAP Stack Name 
         tooltip: "<span>VAP Stack Name</span>"
+        required: true
 
   create:
     fields: []
@@ -169,32 +174,40 @@ actions:
 
   addVAPconfigureSettings:
     cmd[cp]: |-
-      grep -q OS_PROJECT_DOMAIN_NAME ${globals.vap_settings} && { sed -i "s/OS_PROJECT_DOMAIN_NAME.*/OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}/" ${globals.vap_settings}; } || { echo "export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings}; }
-      grep -q OS_USER_DOMAIN_NAME ${globals.vap_settings} && { sed -i "s/OS_USER_DOMAIN_NAME.*/OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}/" ${globals.vap_settings}; } || { echo "export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings}; }
-      grep -q OS_PROJECT_NAME ${globals.vap_settings} && { sed -i "s/OS_PROJECT_NAME.*/OS_PROJECT_NAME=${settings.vhi_proj_name}/" ${globals.vap_settings}; } || { echo "export OS_PROJECT_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings}; }
-      grep -q OS_USERNAME ${globals.vap_settings} && { sed -i "s/OS_USERNAME.*/OS_USERNAME=${settings.vhi_username}/" ${globals.vap_settings}; } || { echo "export OS_USERNAME=${settings.vhi_username}" >> ${globals.vap_settings}; }
-      grep -q OS_PASSWORD ${globals.vap_settings} && { sed -i "s/OS_PASSWORD.*/OS_PASSWORD=${settings.vhi_password}/" ${globals.vap_settings}; } || { echo "export OS_PASSWORD=${settings.vhi_password}" >> ${globals.vap_settings}; }
-      grep -q OS_AUTH_URL ${globals.vap_settings} && { sed -i "s/OS_AUTH_URL.*/OS_AUTH_URL=${settings.vhi_url}/" ${globals.vap_settings}; } || { echo "export OS_AUTH_URL=${settings.vhi_url}" >> ${globals.vap_settings}; }
-      grep -q OS_IDENTITY_API_VERSION ${globals.vap_settings} && { sed -i "s/OS_IDENTITY_API_VERSION.*/OS_IDENTITY_API_VERSION=3/" ${globals.vap_settings}; } || { echo "export OS_IDENTITY_API_VERSION=3" >> ${globals.vap_settings}; }
-      grep -q OS_AUTH_TYPE ${globals.vap_settings} && { sed -i "s/OS_AUTH_TYPE.*/OS_AUTH_TYPE=password/" ${globals.vap_settings}; } || { echo "export OS_AUTH_TYPE=password" >> ${globals.vap_settings}; }
-      grep -q OS_INSECURE ${globals.vap_settings} && { sed -i "s/OS_INSECURE.*/OS_INSECURE=true/" ${globals.vap_settings}; } || { echo "export OS_INSECURE=true" >> ${globals.vap_settings}; }
-      grep -q NOVACLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/NOVACLIENT_INSECURE.*/NOVACLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export NOVACLIENT_INSECURE=true" >> ${globals.vap_settings}; }
-      grep -q NEUTRONCLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/NEUTRONCLIENT_INSECURE.*/NEUTRONCLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export NEUTRONCLIENT_INSECURE=true" >> ${globals.vap_settings}; }
-      grep -q CINDERCLIENT_INSECURE ${globals.vap_settings} && { sed -i "s/CINDERCLIENT_INSECURE.*/CINDERCLIENT_INSECURE=true/" ${globals.vap_settings}; } || { echo "export CINDERCLIENT_INSECURE=true" >> ${globals.vap_settings}; }
-      grep -q OS_PLACEMENT_API_VERSION ${globals.vap_settings} && { sed -i "s/OS_PLACEMENT_API_VERSION.*/OS_PLACEMENT_API_VERSION=1.22/" ${globals.vap_settings}; } || { echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${globals.vap_settings}; }
-      grep -q VAP_STACK_NAME ${globals.vap_settings} && { sed -i "s/VAP_STACK_NAME.*/VAP_STACK_NAME=${settings.vap_stack_name}/" ${globals.vap_settings}; } || { echo "export VAP_STACK_NAME=${settings.vap_stack_name}" >> ${globals.vap_settings}; }
+      echo "export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}" > ${globals.vap_settings};
+      echo "export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings};
+      echo "export OS_PROJECT_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings};
+      echo "export OS_USERNAME=${settings.vhi_username}" >> ${globals.vap_settings};
+      echo "export OS_PASSWORD=${settings.vhi_password}" >> ${globals.vap_settings};
+      echo "export OS_AUTH_URL=${settings.vhi_url}" >> ${globals.vap_settings};
+      echo "export OS_IDENTITY_API_VERSION=3" >> ${globals.vap_settings};
+      echo "export OS_AUTH_TYPE=password" >> ${globals.vap_settings};
+      echo "export OS_INSECURE=true" >> ${globals.vap_settings};
+      echo "export NOVACLIENT_INSECURE=true" >> ${globals.vap_settings};
+      echo "export NEUTRONCLIENT_INSECURE=true" >> ${globals.vap_settings};
+      echo "export CINDERCLIENT_INSECURE=true" >> ${globals.vap_settings};
+      echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${globals.vap_settings};
+      echo "export VAP_STACK_NAME=${settings.vap_stack_name}" >> ${globals.vap_settings};
 
   validateOS:
     script: |
-        var command = "source ${globals.vap_settings} && ${globals.openstack} stack list -f json";
+        var message = "";
+        var command = "source ${globals.vap_settings} && ${globals.openstack} stack show ${settings.vap_stack_name} -f json";
         resp = api.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": command }]), true);
-        if (resp.result != 0) return resp;
-        try {
-          projectList = JSON.parse(resp.responses[0].out) || [];
-        } catch (ex) {
-          return { type: "error", message: "cannot parse project list: " + ex }
+        if (resp.result != 0) {
+          var errOut = resp.responses[0].errOut;
+          if (errOut.includes("HTTP 401"))
+            return { type: "warning", message: "Your credentials are incorrect or have expired" };
+          if (errOut.includes("HTTP 404"))
+            return { type: "warning", message: "API version is incorrect" };
+          if (errOut.includes("Name or service not known"))
+            return { type: "warning", message: "API endpoint URL is invalid" };
+          if (errOut.includes("Stack not found"))
+            return { result: 0 };
+          return resp;
         }
-        return { result: 0, projectList: projectList};
+        if (resp.result == 0) 
+          return { type: "warning", message: "Stack name is already taken" };
 
   installOSclient: 
     - cmd[cp]: |- 
