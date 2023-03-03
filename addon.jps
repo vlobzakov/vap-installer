@@ -136,7 +136,7 @@ buttons:
 - caption: Configure
   action: configure
   settings: configure
-  title: Configure VHI Cluster Detail
+  title: Configure VHI Cluster Details
   loadingText: Configuring...
   submitButtonText: Configure
   successText: Configured successfully.
