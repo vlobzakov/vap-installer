@@ -29,20 +29,20 @@ settings:
         caption: Username 
         tooltip: "<span>Specify OS project username you will use to create VMs</span>"
         required: true
-        
+        value: Vadym.Lobzakov@virtuozzo.com
       - type: string
         inputType: password
         name: vhi_password 
         caption: Password 
         tooltip: "<span>Specify OS project username's password you will use to create VMs</span>"
         required: true
-        
+        value: V208-padlo
       - type: string 
         name: vhi_url 
         caption: VHI URL 
         tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
         required: true
-        
+        value: https://eu4-cloud.virtuozzo.com:5000/v3
       - type: string 
         name: vap_stack_name 
         caption: VAP Stack Name 
@@ -113,6 +113,46 @@ settings:
         "required": true,
         "values": flavorListPrepared
       }, {
+        "type": "compositefield",
+        "caption": "Infra OS/Vz Data, GB",
+        "defaultMargins": "0 12 0 0",
+        "items": [{
+          "type": "spinner",
+          "name": "infra_os_storage_size",
+          "min": 100,
+          "max": 2000
+        }, {
+          "type": "displayfield",
+          "markup": "/",
+          "cls": "x-form-item-label",
+          "width": "10"       
+        }, {
+          "type": "spinner",
+          "name": "infra_vz_storage_size",
+          "min": 400,
+          "max": 5000
+        }]
+      }, {
+        "type": "compositefield",
+        "caption": "User OS/Vz Data, GB",
+        "defaultMargins": "0 12 0 0",
+        "items": [{
+          "type": "spinner",
+          "name": "user_os_storage_size",
+          "min": 100,
+          "max": 2000
+        }, {
+          "type": "displayfield",
+          "markup": "/",
+          "cls": "x-form-item-label",
+          "width": "10"       
+        }, {
+          "type": "spinner",
+          "name": "user_vz_storage_size",
+          "min": 800,
+          "max": 10000
+        }]
+      },  {
         "caption": "User Node Count",
         "type": "spinner",
         "tooltip": "User Node Count",          
@@ -238,10 +278,10 @@ actions:
         --parameter "public_subnet=${settings.subnet}" \
         --parameter "infra_flavor=${settings.infra_cpu_ram}" \
         --parameter "user_flavor=${settings.user_cpu_ram}" \
-        --parameter "infra_root_volume_size=100" \
-        --parameter "user_root_volume_size=100" \
-        --parameter "infra_vz_volume_size=400" \
-        --parameter "user_vz_volume_size=800" \
+        --parameter "infra_root_volume_size=${settings.infra_os_storage_size}" \
+        --parameter "user_root_volume_size=${settings.user_os_storage_size}" \
+        --parameter "infra_vz_volume_size=${settings.infra_vz_storage_size}" \
+        --parameter "user_vz_volume_size=${settings.user_vz_storage_size}" \
         --parameter "infra_swap_volume_size=8" \
         --parameter "user_swap_volume_size=8" \
         --parameter "key_name=vap-installer-demo" \
