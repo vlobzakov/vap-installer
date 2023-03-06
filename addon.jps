@@ -116,6 +116,10 @@ settings:
         "type": "compositefield",
         "caption": "Infra OS/Vz Data, GB",
         "defaultMargins": "0 12 0 0",
+        "tooltip": {
+          "text": "Storage volume size for '<b>/</b>' and '<b>/vz</b>' partition for Infra nodes",
+          "minWidth": 370
+        },        
         "items": [{
           "type": "spinner",
           "name": "infra_os_storage_size",
@@ -136,6 +140,10 @@ settings:
         "type": "compositefield",
         "caption": "User OS/Vz Data, GB",
         "defaultMargins": "0 12 0 0",
+        "tooltip": {
+          "text": "Storage volume size for '<b>/</b>' and '<b>/vz</b>' partition for User nodes",
+          "minWidth": 370
+        },        
         "items": [{
           "type": "spinner",
           "name": "user_os_storage_size",
