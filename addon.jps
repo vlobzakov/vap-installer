@@ -21,32 +21,32 @@ settings:
       - type: string 
         name: vhi_proj_name 
         caption: VHI Project Name 
-        tooltip: "<span>Specify project name you will use to create VMs in</span>"
+        tooltip: "<span>Specify VHI project name you will use to create VMs in</span>"
         required: true
         value: cmp
       - type: string 
         name: vhi_username 
         caption: Username 
-        tooltip: "<span>Specify OS project username you will use to create VMs</span>"
+        tooltip: "<span>Specify VHI account username you will use to create VMs</span>"
         required: true
         
       - type: string
         inputType: password
         name: vhi_password 
         caption: Password 
-        tooltip: "<span>Specify OS project username's password you will use to create VMs</span>"
+        tooltip: "<span>Specify VHI account password you will use to create VMs</span>"
         required: true
         
       - type: string 
         name: vhi_url 
         caption: VHI URL 
-        tooltip: "<span>Specify VHI cluster URL where you are authenticated</span>"
+        tooltip: "<span>Specify VHI cluster API endpoint URL</span>"
         required: true
         
       - type: string 
         name: vap_stack_name 
-        caption: VAP Stack Name 
-        tooltip: "<span>VAP Stack Name</span>"
+        caption: VAP Project Domain 
+        tooltip: "<span>Come up with VAP Project Domain Name</span>"
         required: true
 
   create:
