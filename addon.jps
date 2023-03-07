@@ -51,7 +51,9 @@ settings:
 
   create:
     fields: []
-    onBeforeInit: |   
+    onBeforeInit: |
+      var minInfraCpu = 8, minInfraRam = 32000;
+      var minUserCpu = 12, minUserRam = 48000;
       var subnetListPrepared = [], flavorListPrepared = [], publicIDs, subnetID;
       var networkList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": 'source ${globals.vap_settings} && ${globals.openstack} network list -f json' }]), true).responses[0].out;
       var subnetList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack subnet list -f json' }]), true).responses[0].out;
@@ -67,16 +69,18 @@ settings:
         });
       }
 
-      var flavorListPrepared = prepareFlavors(JSON.parse(flavorList));
+      var infraFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minInfraCpu,minInfraRam);
+      var userFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minUserCpu,minUserRam);
       
-      function prepareFlavors(values) {
+      function prepareFlavors(values, minCpu, minRam) {
         var aResultValues = [];
         values = values || [];
         for (var i = 0, n = values.length; i < n; i++) {
-          aResultValues.push({
-            caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
-            value: values[i].Name
-          });
+          if ( (parseInt(values[i].VCPUs, 10) >= minCpu) && (parseInt(values[i].RAM, 10) >= minRam))
+            aResultValues.push({
+              caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
+              value: values[i].Name
+            });   
         }
         return aResultValues;
       }
@@ -99,7 +103,7 @@ settings:
         },
         "name": "infra_cpu_ram",
         "required": true,
-        "values": flavorListPrepared
+        "values": infraFlavorListPrepared
       }, {
         "caption": "RAM&CPU User",
         "type": "list",
@@ -111,7 +115,7 @@ settings:
       },
         "name": "user_cpu_ram",
         "required": true,
-        "values": flavorListPrepared
+        "values": userFlavorListPrepared
       }, {
         "type": "compositefield",
         "caption": "Infra OS/Vz Data, GB",
