@@ -181,12 +181,14 @@ getSubnets(){
   for i in $(${OPENSTACK} network list -f value -c Name); do
     [[ "$(${OPENSTACK} network show $i -f value -c provider:network_type)" == "flat" ]] && {
       for subnet in $(${OPENSTACK} network show $i -f json -c subnets | jq -r .subnets[]); do
-        cidr="$(${OPENSTACK} subnet show $subnet -f value -c cidr)"
+        detail_subnet="$(${OPENSTACK} subnet show $subnet -f json)"
+        subnet_name="$(echo $detail_subnet | jq -r .name)"
+        cidr="$(echo $detail_subnet | jq -r .cidr)"
         grep -qE "(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^169\.254)" <<< $cidr || {
           id=$((id+1))
           subnets=$(echo $subnets | jq \
             --argjson id "$id" \
-            --arg Name "$i" \
+            --arg Name "$subnet_name" \
             --arg Network "$subnet" \
             --arg Subnet "$cidr" \
           '. += [{"id": $id, "Name": $Name, "Network": $Network, "Subnet": $Subnet}]')
@@ -360,7 +362,9 @@ create(){
   }
 
   IMAGE=$(_getValueById $IMAGE "Name" "images.json")
-#  SUBNET=$(_getValueById $SUBNET "Name" "images.json")
+  SUBNET=$(_getValueById $SUBNET "Name" "subnets.json")
+  INFRA_FLAVOR=$(_getValueById $INFRA_FLAVOR "Name" "infraFlavors.json")
+  USER_FLAVOR=$(_getValueById $USER_FLAVOR "Name" "userFlavors.json")
 
   local createcmd="${OPENSTACK} stack create -t VAP.yaml"
   createcmd+=" --parameter 'image=${IMAGE}'"
