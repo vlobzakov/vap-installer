@@ -127,12 +127,13 @@ getImages(){
   local cmd="${OPENSTACK} image list -f json"
   local full_images=$(execReturn "${cmd}" "Getting images list")
 
-  for image in $(echo "${full_images}" | jq -r '.[] | @base64'); do
+  for row in $(echo "${full_images}" | jq -r '.[] | @base64'); do
     _jq() {
-       echo "${image}" | base64 --decode | jq -r "${1}"
+     echo "${row}" | base64 --decode | jq -r "${1}"
     }
     Name=$(_jq '.Name')
-    grep -E "^vap-[0-9]{2}-[0-9]_[0-9]{14}" <<< $Name && {
+
+    grep -qE "^vap-[0-9]{2}-[0-9]_[0-9]{14}" <<< ${Name} && {
       id=$((id+1))
       Status=$(_jq '.Status')
 
@@ -156,7 +157,7 @@ getImages(){
     printf "%-5s| %-50s| %s\n" ID Name Status
     printf "%.${TableWidth}s\n" "$seperator"
 
-    for row in $(echo "${subnets}" | jq -r '.[] | @base64'); do
+    for row in $(echo "${images}" | jq -r '.[] | @base64'); do
       _jq() {
         echo "${row}" | base64 --decode | jq -r "${1}"
       }
