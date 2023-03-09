@@ -87,8 +87,7 @@ getFlavorsByParam(){
   done
 
   local output="{\"result\": 0, \"${name}\": ${infra_flavors}}"
-  echo $output > ${name}.json
-
+  echo $infra_flavors > ${name}.json
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
     exit 0
@@ -149,7 +148,7 @@ getImages(){
   done
 
   local output="{\"result\": 0, \"images\": ${images}}"
-  echo $output > images.json
+  echo $images > images.json
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
     exit 0
@@ -195,9 +194,9 @@ getSubnets(){
       done
     }
   done
-  
+
   local output="{\"result\": 0, \"subnets\": ${subnets}}"
-  echo $output > subnets.json
+  echo $subnets > subnets.json
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
     exit 0
@@ -352,12 +351,36 @@ create(){
     esac
   done
 
+  _getValueById(){
+    local id="$1"
+    local arg="$2"
+    local json_name="$3"
+    local result=$(jq ".[] | select(.id == ${id}) | .${arg}" ${json_name} | tr -d '"')
+    echo $result
+  }
 
-  
-  
+  IMAGE=$(_getValueById $IMAGE "Name" "images.json")
+#  SUBNET=$(_getValueById $SUBNET "Name" "images.json")
+
+  local createcmd="${OPENSTACK} stack create -t VAP.yaml"
+  createcmd+=" --parameter 'image=${IMAGE}'"
+  createcmd+=" --parameter 'user_hosts_count=${USER_HOST_COUNT}'"
+  createcmd+=" --parameter 'public_network=public'"
+  createcmd+=" --parameter 'public_subnet=${SUBNET}'"
+  createcmd+=" --parameter 'infra_flavor=${INFRA_FLAVOR}'"
+  createcmd+=" --parameter 'user_flavor=${USER_FLAVOR}'"
+  createcmd+=" --parameter 'infra_root_volume_size=${INFRA_ROOT_SIZE}'"
+  createcmd+=" --parameter 'user_root_volume_size=${USER_ROOT_SIZE}'"
+  createcmd+=" --parameter 'infra_vz_volume_size=${INFRA_VZ_SIZE}'"
+  createcmd+=" --parameter 'user_vz_volume_size=${USER_VZ_SIZE}'"
+  createcmd+=" --parameter 'infra_swap_volume_size=8'"
+  createcmd+=" --parameter 'user_swap_volume_size=8'"
+  createcmd+=" --parameter 'key_name=vap-installer-demo'"
+  createcmd+=" --wait"
+
+  echo $createcmd
+
 }
-
-
 
 case ${1} in
     configure)
