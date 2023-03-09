@@ -77,18 +77,21 @@ getFlavorsByParam(){
       Ephemeral=$(_jq '.Ephemeral')
 
       infra_flavors=$(echo $infra_flavors | jq \
-        --argjson id "$id" \
+        --argjson id $id \
         --arg Name "$Name" \
-        --arg RAM  "$RAM" \
-        --arg VCPUs  "$VCPUs" \
+        --arg RAM  $RAM \
+        --arg VCPUs  $VCPUs \
         --arg Ephemeral  "$Ephemeral" \
       '. += [{"id": $id, "Name": $Name, "RAM": $RAM, "VCPUs": $VCPUs, "Ephemeral": $Ephemeral}]')
     }
   done
 
+  local output="{\"result\": 0, \"${name}\": ${infra_flavors}}"
+  echo $output > ${name}.json
+
+
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    output="{\"result\": 0, \"${name}\": ${infra_flavors}}"
-    echo $output > ${name}.json
+    exit 0
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-20s| %-20s| %-20s| %s\n"
@@ -145,9 +148,11 @@ getImages(){
     }
   done
 
+  local output="{\"result\": 0, \"images\": ${images}}"
+  echo $output > images.json
+
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    output="{\"result\": 0, \"images\": ${images}}"
-    echo $output
+    exit 0
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-50s| %s\n"
@@ -190,11 +195,12 @@ getSubnets(){
       done
     }
   done
-  echo $subnets > subnets.json
+  
+  local output="{\"result\": 0, \"subnets\": ${subnets}}"
+  echo $output > subnets.json
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    output="{\"result\": 0, \"subnets\": ${subnets}}"
-    echo $output
+    exit 0
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-20s| %-50s| %s\n"
@@ -285,6 +291,7 @@ configure(){
   echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${VAP_ENVS};
   echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
 
+  getFlavors
   getInfraFlavors
   getUserFlavors
   getSubnets
@@ -292,9 +299,73 @@ configure(){
 
 }
 
+create(){
+  for i in "$@"; do
+    case $i in
+      --image=*)
+      IMAGE=${i#*=}
+      shift
+      shift
+      ;;
+      --user-host-count=*)
+      USER_HOST_COUNT=${i#*=}
+      shift
+      shift
+      ;;
+      --subnet=*)
+      SUBNET=${i#*=}
+      shift
+      shift
+      ;;
+      --user-flavor=*)
+      USER_FLAVOR=${i#*=}
+      shift
+      shift
+      ;;
+      --infra-flavor=*)
+      INFRA_FLAVOR=${i#*=}
+      shift
+      shift
+      ;;
+      --infra-root-size=*)
+      INFRA_ROOT_SIZE=${i#*=}
+      shift
+      shift
+      ;;
+      --user-root-size=*)
+      USER_ROOT_SIZE=${i#*=}
+      shift
+      shift
+      ;;
+      --infra-vz-size=*)
+      INFRA_VZ_SIZE=${i#*=}
+      shift
+      shift
+      ;;
+      --user-vz-size=*)
+      USER_VZ_SIZE=${i#*=}
+      shift
+      shift
+      ;;
+      *)
+        ;;
+    esac
+  done
+
+
+  
+  
+}
+
+
+
 case ${1} in
     configure)
       configure "$@"
+      ;;
+
+    create)
+      create "$@"
       ;;
 
     getSubnets)
