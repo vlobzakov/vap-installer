@@ -224,6 +224,12 @@ getSubnets(){
   fi
 }
 
+getWebinstallerLink(){
+  local stack_name="$1"
+  local cmd="${OPENSTACK} stack output show ${stack_name} webinstaller_link -f value -c output_value "
+  local output=$(execReturn "${cmd}" "Getting webinstaller_link for ${stack_name} stack")
+  echo $output
+}
 
 responseValidate(){
 #  source ${VAP_ENVS}
@@ -361,28 +367,34 @@ create(){
     echo $result
   }
 
+  source ${VAP_ENVS}
   IMAGE=$(_getValueById $IMAGE "Name" "images.json")
   SUBNET=$(_getValueById $SUBNET "Name" "subnets.json")
   INFRA_FLAVOR=$(_getValueById $INFRA_FLAVOR "Name" "infraFlavors.json")
   USER_FLAVOR=$(_getValueById $USER_FLAVOR "Name" "userFlavors.json")
 
-  local createcmd="${OPENSTACK} stack create -t VAP.yaml"
-  createcmd+=" --parameter 'image=${IMAGE}'"
-  createcmd+=" --parameter 'user_hosts_count=${USER_HOST_COUNT}'"
-  createcmd+=" --parameter 'public_network=public'"
-  createcmd+=" --parameter 'public_subnet=${SUBNET}'"
-  createcmd+=" --parameter 'infra_flavor=${INFRA_FLAVOR}'"
-  createcmd+=" --parameter 'user_flavor=${USER_FLAVOR}'"
-  createcmd+=" --parameter 'infra_root_volume_size=${INFRA_ROOT_SIZE}'"
-  createcmd+=" --parameter 'user_root_volume_size=${USER_ROOT_SIZE}'"
-  createcmd+=" --parameter 'infra_vz_volume_size=${INFRA_VZ_SIZE}'"
-  createcmd+=" --parameter 'user_vz_volume_size=${USER_VZ_SIZE}'"
-  createcmd+=" --parameter 'infra_swap_volume_size=8'"
-  createcmd+=" --parameter 'user_swap_volume_size=8'"
-  createcmd+=" --parameter 'key_name=vap-installer-demo'"
+  local createcmd="${OPENSTACK} stack create ${VAP_STACK_NAME} -t VAP.yaml"
+  createcmd+=" --parameter image=${IMAGE}"
+  createcmd+=" --parameter user_hosts_count=${USER_HOST_COUNT}"
+  createcmd+=" --parameter public_network=public"
+  createcmd+=" --parameter public_subnet=${SUBNET}"
+  createcmd+=" --parameter infra_flavor=${INFRA_FLAVOR}"
+  createcmd+=" --parameter user_flavor=${USER_FLAVOR}"
+  createcmd+=" --parameter infra_root_volume_size=${INFRA_ROOT_SIZE}"
+  createcmd+=" --parameter user_root_volume_size=${USER_ROOT_SIZE}"
+  createcmd+=" --parameter infra_vz_volume_size=${INFRA_VZ_SIZE}"
+  createcmd+=" --parameter user_vz_volume_size=${USER_VZ_SIZE}"
+  createcmd+=" --parameter infra_swap_volume_size=8"
+  createcmd+=" --parameter user_swap_volume_size=8"
+  createcmd+=" --parameter key_name=vap-installer-demo"
   createcmd+=" --wait"
 
-  echo $createcmd
+#  execAction "${createcmd}" "Creating new stack ${VAP_STACK_NAME}"
+
+  ${createcmd}
+
+web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
+echo "Web Installer Link: $web_link"
 
 }
 
@@ -411,4 +423,7 @@ case ${1} in
       getImages
       ;;
 
+    getWebinstallerLink)
+      getWebinstallerLink "$@"
+      ;;
 esac
