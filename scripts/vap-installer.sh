@@ -10,6 +10,11 @@ RUN_LOG="$BASE_DIR/installer.log"
 VAP_ENVS="$BASE_DIR/.vapenv"
 OPENSTACK="/opt/jelastic-python311/bin/openstack"
 
+MIN_INFRA_VCPU=8
+MIN_INFRA_RAM=32000
+MIN_USER_VCPU=12
+MIN_USER_RAM=48000
+
 trap "execResponse '${FAIL_CODE}' 'Please check the ${RUN_LOG} log file for details.'; exit 0" TERM
 export TOP_PID=$$
 
@@ -42,6 +47,78 @@ execReturn(){
   source ${VAP_ENVS}
   stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done";  } || { log "${message}...failed\n${stdout}\n"; }
   echo ${stdout}
+}
+
+getFlavors(){
+  local cmd="${OPENSTACK} flavor list -f json"
+  local output=$(execReturn "${cmd}" "Getting flavors list")
+  echo $output > flavors.json
+}
+
+getFlavorsByParam(){
+  local name="$1"
+  local min_cpu="$2"
+  local min_ram="$3"
+  local title="$4"
+  local id=0
+  local flavors=$(cat flavors.json)
+  local infra_flavors=$(jq -n '[]')
+  for flavor in $(echo "${flavors}" | jq -r '.[] | @base64'); do
+    _jq() {
+     echo "${flavor}" | base64 --decode | jq -r "${1}"
+    }
+    RAM=$(_jq '.RAM')
+    VCPUs=$(_jq '.VCPUs')
+
+    [[ $RAM -ge $min_ram  && $VCPUs -ge $min_cpu  ]] && {
+
+      id=$((id+1))
+      Name=$(_jq '.Name')
+      Ephemeral=$(_jq '.Ephemeral')
+      
+      infra_flavors=$(echo $infra_flavors | jq \
+        --argjson id "$id" \
+        --arg Name "$Name" \
+        --arg RAM  "$RAM" \
+        --arg VCPUs  "$VCPUs" \
+        --arg Ephemeral  "$Ephemeral" \
+      '. += [{"id": $id, "Name": $Name, "RAM": $RAM, "VCPUs": $VCPUs, "Ephemeral": $Ephemeral}]')
+    }
+  done
+  
+  if [[ "x${FORMAT}" == "xjson" ]]; then
+    output="{\"result\": 0, \"${name}\": ${infra_flavors}}"
+    echo $output > ${name}.json
+  else
+    seperator=---------------------------------------------------------------------------------------------------
+    rows="%-5s| %-20s| %-20s| %-20s| %s\n"
+    TableWidth=100
+    echo "${title}"
+    printf "%.${TableWidth}s\n" "$seperator"
+    printf "%-5s| %-20s| %-20s| %-20s| %s\n" ID Name RAM VCPUs Ephemeral
+    printf "%.${TableWidth}s\n" "$seperator"
+
+    for row in $(echo "${infra_flavors}" | jq -r '.[] | @base64'); do
+      _jq() {
+        echo "${row}" | base64 --decode | jq -r "${1}"
+      }
+      id=$(_jq '.id')
+      Name=$(_jq '.Name')
+      RAM=$(_jq '.RAM')
+      VCPUs=$(_jq '.VCPUs')
+      Ephemeral=$(_jq '.Ephemeral')
+      printf "$rows" "$id" "$Name" "$RAM" "$VCPUs" "$Ephemeral"
+    done
+  fi
+
+}
+
+getInfraFlavors(){
+  getFlavorsByParam "infraFlavors" "${MIN_INFRA_VCPU}" "${MIN_INFRA_RAM}" "Infra node flavors"
+}
+
+getUserFlavors(){
+  getFlavorsByParam "userFlavors" "${MIN_USER_VCPU}" "${MIN_USER_RAM}" "User node flavors"
 }
 
 getSubnets(){
@@ -149,11 +226,7 @@ configure(){
   echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${VAP_ENVS};
   echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
 
-  responseValidate
-
 }
-
-
 
 case ${1} in
     configure)
@@ -164,8 +237,11 @@ case ${1} in
       getSubnets
       ;;
 
-    importProject)
-      importProject "$@"
+    getInfraFlavors)
+      getInfraFlavors
+      ;;
+
+    getUserFlavors)
+      getUserFlavors
       ;;
 esac
-
