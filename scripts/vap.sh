@@ -10,6 +10,12 @@ RUN_LOG="$BASE_DIR/installer.log"
 VAP_ENVS="$BASE_DIR/.vapenv"
 OPENSTACK="/opt/jelastic-python311/bin/openstack"
 
+FLAVORS_JSON="$BASE_DIR/flavors.json"
+INFRA_FLAVORS_JSON="$BASE_DIR/infraFlavors.json"
+USER_FLAVORS_JSON="$BASE_DIR/userFlavors.json"
+IMAGES_JSON="$BASE_DIR/images.json"
+SUBNETS_JSON="$BASE_DIR/subnets.json"
+
 MIN_INFRA_VCPU=8
 MIN_INFRA_RAM=32000
 MIN_USER_VCPU=12
@@ -54,7 +60,7 @@ execReturn(){
 getFlavors(){
   local cmd="${OPENSTACK} flavor list -f json"
   local output=$(execReturn "${cmd}" "Getting flavors list")
-  echo $output > flavors.json
+  echo $output > $FLAVORS_JSON
 }
 
 getFlavorsByParam(){
@@ -63,8 +69,9 @@ getFlavorsByParam(){
   local min_ram="$3"
   local title="$4"
   local id=0
-  local flavors=$(cat flavors.json)
+  local flavors=$(cat $FLAVORS_JSON)
   local infra_flavors=$(jq -n '[]')
+
   for flavor in $(echo "${flavors}" | jq -r '.[] | @base64'); do
     _jq() {
      echo "${flavor}" | base64 --decode | jq -r "${1}"
@@ -88,11 +95,11 @@ getFlavorsByParam(){
     }
   done
 
-  local output="{\"result\": 0, \"${name}\": ${infra_flavors}}"
-  echo $infra_flavors > ${name}.json
+  local output="{\"result\": 0, \"flavors\": ${infra_flavors}}"
+  echo $infra_flavors > ${name}
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    exit 0
+    log "Creating ${title}...done";
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-20s| %-20s| %-20s| %s\n"
@@ -118,11 +125,11 @@ getFlavorsByParam(){
 }
 
 getInfraFlavors(){
-  getFlavorsByParam "infraFlavors" "${MIN_INFRA_VCPU}" "${MIN_INFRA_RAM}" "Infra node flavors"
+  getFlavorsByParam "${INFRA_FLAVORS_JSON}" "${MIN_INFRA_VCPU}" "${MIN_INFRA_RAM}" "Infra node flavors"
 }
 
 getUserFlavors(){
-  getFlavorsByParam "userFlavors" "${MIN_USER_VCPU}" "${MIN_USER_RAM}" "User node flavors"
+  getFlavorsByParam "${USER_FLAVORS_JSON}" "${MIN_USER_VCPU}" "${MIN_USER_RAM}" "User node flavors"
 }
 
 getImages(){
@@ -152,10 +159,10 @@ getImages(){
   done
 
   local output="{\"result\": 0, \"images\": ${images}}"
-  echo $images > images.json
+  echo $images > ${IMAGES_JSON}
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    exit 0
+    log "Validation images...done";
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-50s| %s\n"
@@ -202,10 +209,10 @@ getSubnets(){
   done
 
   local output="{\"result\": 0, \"subnets\": ${subnets}}"
-  echo $subnets > subnets.json
+  echo $subnets > ${SUBNETS_JSON}
 
   if [[ "x${FORMAT}" == "xjson" ]]; then
-    exit 0
+    log "Getting subnets...done";
   else
     seperator=---------------------------------------------------------------------------------------------------
     rows="%-5s| %-20s| %-50s| %s\n"
