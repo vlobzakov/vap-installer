@@ -322,10 +322,10 @@ configure(){
   execAction "${OPENSTACK} stack list" "Parameters validation"
   for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
     grep -q "$stack" <<< "$VAP_STACK_NAME" && {
-      [[ "x${FORMAT}" == "xjson" ]] && { 
-        execResponse "${FAIL_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0; 
-      } || { 
-        echo "Stack name $VAP_STACK_NAME is already taken"; exit 0; 
+      [[ "x${FORMAT}" == "xjson" ]] && {
+        execResponse "${FAIL_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0;
+      } || {
+        echo "Stack name $VAP_STACK_NAME is already taken"; exit 0;
       };
     }
   done
@@ -421,10 +421,13 @@ create(){
   createcmd+=" --parameter key_name=vap-installer-demo"
   createcmd+=" --wait"
 
-  ${createcmd}
+#  [[ "x${FORMAT}" == "xjson" ]] && { ${createcmd} >> ${RUN_LOG} ; } || { ${createcmd} ; };
 
-web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
-echo "Web Installer Link: $web_link"
+[[ "x${FORMAT}" == "xjson" ]] && { execAction "${createcmd}" "Creating new stack" ; } || { ${createcmd} ; };
+#execAction "${createcmd}" "Creating new stack"
+
+#web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
+#echo "Web Installer Link: $web_link"
 
 }
 
