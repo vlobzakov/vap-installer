@@ -223,10 +223,18 @@ buttons:
   action: create
   loadingText: Creating VAP...
   settings: create
+  logsPath: /var/www/webroot/installer.log
   successText: The VAP have been successfully created.
   title: New VAP
   submitButtonText: New VAP
   confirmText: Create New VAP?
+
+responses:
+  99:
+    type: warning
+    message: |
+      Errors were discovered during the VAP creating.
+      Please check the **/var/www/webroot/installer.log** log file for details. 
 
 onInstall: 
   - installOSclient
@@ -246,10 +254,9 @@ actions:
         --format=json
     - script: |
         var resp = JSON.parse(${response.out});
-        if (resp.result == 99)
-            return { type: "warning", message: resp.out };
-        if (resp.result == 0)
-            return { type: "success", message: resp.out };
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { result: 0}
 
   getScripts:
     cmd[cp]: |-
@@ -278,3 +285,8 @@ actions:
         --user-root-size=${settings.user_os_storage_size} \
         --user-vz-size=${settings.user_vz_storage_size} \
         --format=json
+    - script: |
+        var resp = JSON.parse(${response.out});
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { result: 0}
