@@ -1,15 +1,14 @@
 #!/bin/bash
 
-SUCCESS_CODE=0
-FAIL_CODE=99
-AUTHORIZATION_ERROR_CODE=701
-
-BASE_DIR="$(pwd)"
-RUN_LOG="$BASE_DIR/installer.log"
-
-VAP_ENVS="$BASE_DIR/.vapenv"
 OPENSTACK="/opt/jelastic-python311/bin/openstack"
 
+SUCCESS_CODE=0
+FAIL_CODE=99
+
+BASE_DIR="$(pwd)"
+
+RUN_LOG="$BASE_DIR/installer.log"
+VAP_ENVS="$BASE_DIR/.vapenv"
 FLAVORS_JSON="$BASE_DIR/flavors.json"
 INFRA_FLAVORS_JSON="$BASE_DIR/infraFlavors.json"
 USER_FLAVORS_JSON="$BASE_DIR/userFlavors.json"
@@ -20,9 +19,6 @@ MIN_INFRA_VCPU=8
 MIN_INFRA_RAM=32000
 MIN_USER_VCPU=12
 MIN_USER_RAM=48000
-
-trap "execResponse '${FAIL_CODE}' 'Please check the ${RUN_LOG} log file for details.'; exit 0" TERM
-export TOP_PID=$$
 
 log(){
   local message=$1
@@ -45,7 +41,6 @@ execAction(){
   stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done";  } || {
     log "${message}...failed\n${stdout}\n";
     responseValidate "${stdout}";
-    kill -s TERM $TOP_PID;
   }
 }
 
@@ -53,8 +48,10 @@ execReturn(){
   local action="$1"
   local message="$2"
   source ${VAP_ENVS}
-  stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done";  } || { log "${message}...failed\n${stdout}\n"; }
-  echo ${stdout}
+  stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done"; echo ${stdout}; } || {
+    log "${message}...failed\n${stdout}\n";
+    responseValidate "${stdout}";
+  }
 }
 
 getFlavors(){
@@ -251,9 +248,10 @@ responseValidate(){
   while read -d, -r pair; do
     IFS=':' read -r key val <<<"$pair"
     grep -q "$key" <<< "$response" && {
-      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "100" "$val"; } || { echo "$val"; exit 0; };
+      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${FAIL_CODE}" "$val"; exit 0; } || { echo "$val"; exit 0; };
     }
   done <<<"$errorsArray,"
+  [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${FAIL_CODE}" "Please check the ${RUN_LOG} log file for details."; exit 0; } || { echo "$response"; exit 0; };
 }
 
 configure(){
@@ -321,10 +319,14 @@ configure(){
   echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
   [[ "x${FORMAT}" == "xjson" ]] && { echo "export FORMAT=${FORMAT}" >> ${VAP_ENVS}; }
 
-  execAction "${OPENSTACK} stack list" "Validation"
+  execAction "${OPENSTACK} stack list" "Parameters validation"
   for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
     grep -q "$stack" <<< "$VAP_STACK_NAME" && {
-      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "100" "Stack exist"; } || { echo "Stack exist"; exit 0; };
+      [[ "x${FORMAT}" == "xjson" ]] && { 
+        execResponse "${FAIL_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0; 
+      } || { 
+        echo "Stack name $VAP_STACK_NAME is already taken"; exit 0; 
+      };
     }
   done
 
