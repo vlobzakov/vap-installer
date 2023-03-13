@@ -3,6 +3,7 @@
 OPENSTACK="/opt/jelastic-python311/bin/openstack"
 
 SUCCESS_CODE=0
+VALIDATION_ERROR_CODE=100
 FAIL_CODE=99
 
 BASE_DIR="$(pwd)"
@@ -248,7 +249,7 @@ responseValidate(){
   while read -d, -r pair; do
     IFS=':' read -r key val <<<"$pair"
     grep -q "$key" <<< "$response" && {
-      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${FAIL_CODE}" "$val"; exit 0; } || { echo "$val"; exit 0; };
+      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${VALIDATION_ERROR_CODE}" "$val"; exit 0; } || { echo "$val"; exit 0; };
     }
   done <<<"$errorsArray,"
   [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${FAIL_CODE}" "Please check the ${RUN_LOG} log file for details."; exit 0; } || { echo "$response"; exit 0; };
@@ -323,7 +324,7 @@ configure(){
   for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
     grep -q "$stack" <<< "$VAP_STACK_NAME" && {
       [[ "x${FORMAT}" == "xjson" ]] && {
-        execResponse "${FAIL_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0;
+        execResponse "${VALIDATION_ERROR_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0;
       } || {
         echo "Stack name $VAP_STACK_NAME is already taken"; exit 0;
       };
