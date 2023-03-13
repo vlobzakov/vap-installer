@@ -53,35 +53,55 @@ settings:
   create:
     fields: []
     onBeforeInit: |
-      var minInfraCpu = 8, minInfraRam = 32000;
-      var minUserCpu = 12, minUserRam = 48000;
-      var subnetListPrepared = [], flavorListPrepared = [], publicIDs, subnetID;
-      var networkList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": 'source ${globals.vap_settings} && ${globals.openstack} network list -f json' }]), true).responses[0].out;
-      var subnetList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack subnet list -f json' }]), true).responses[0].out;
-      var flavorList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack flavor list -f json' }]), true).responses[0].out;
+      var infraFlavorList = getJsonFromFile("${globals.vap_dir}/infraFlavors.json");
+      var infraFlavorListPrepared = prepareFlavorsList(JSON.parse(infraFlavorList));
+      var userFlavorList = getJsonFromFile("${globals.vap_dir}/userFlavors.json");
+      var userFlavorListPrepared = prepareFlavorsList(JSON.parse(userFlavorList));
+      var imagesList = getJsonFromFile("${globals.vap_dir}/images.json");
+      var imageListPrepared = prepareImageList(JSON.parse(imagesList));
+      var subnetsList = getJsonFromFile("${globals.vap_dir}/subnets.json");
+      var subnetListPrepared = prepareSubnetList(JSON.parse(subnetsList));
       var vapStackName = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && echo $VAP_STACK_NAME' }]), true).responses[0].out;      
-
-      publicIDs = JSON.parse(networkList).find(x => x.Name === 'public').Subnets;
-      for (var i = 0, n = publicIDs.length; i < n; i++) {
-        subnetID = JSON.parse(subnetList).find(x => x.ID === publicIDs[i]);
-        subnetListPrepared.push({
-          caption: subnetID.Subnet,
-          value: subnetID.Name
-        });
+       
+      function getJsonFromFile(jsonFile) {
+        var cmd = "cat " + jsonFile;
+        var resp = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": cmd }]), true);
+        if (resp.result != 0) return resp;
+        return resp.responses[0].out;
       }
-
-      var infraFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minInfraCpu,minInfraRam);
-      var userFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minUserCpu,minUserRam);
       
-      function prepareFlavors(values, minCpu, minRam) {
+      function prepareFlavorsList(values) {
         var aResultValues = [];
         values = values || [];
         for (var i = 0, n = values.length; i < n; i++) {
-          if ( (parseInt(values[i].VCPUs, 10) >= minCpu) && (parseInt(values[i].RAM, 10) >= minRam))
-            aResultValues.push({
-              caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
-              value: values[i].Name
-            });   
+          aResultValues.push({
+            caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
+      
+      function prepareSubnetList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Subnet,
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
+
+      function prepareImageList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Name,
+            value: values[i].id
+          });   
         }
         return aResultValues;
       }
@@ -181,11 +201,11 @@ settings:
         "values": subnetListPrepared
       }, {
         "caption": "VAP Image Name",
-        "type": "string",
+        "type": "list",
         "tooltip": "Select required qcow2 VAP image name",          
         "name": "image_name",
         "required": true,
-        "value": "vap-82-2_20230301234215"
+        "value": imageListPrepared
       })
 
       return settings;
