@@ -205,7 +205,7 @@ settings:
         "tooltip": "Select required qcow2 VAP image name",          
         "name": "image_name",
         "required": true,
-        "value": imageListPrepared
+        "values": imageListPrepared
       })
 
       return settings;
