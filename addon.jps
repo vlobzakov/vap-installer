@@ -250,7 +250,6 @@ actions:
             return { type: "warning", message: resp.out };
         if (resp.result == 0)
             return { type: "success", message: resp.out };
-        
 
   getScripts:
     cmd[cp]: |-
@@ -267,16 +266,15 @@ actions:
         pip install python-heatclient
 
   create:
-    - log: VAP Stack Name - ${settings.vap_stack_name}
-    - log: RAM&CPU Infra - ${settings.infra_cpu_ram}
-    - log: RAM&CPU User - ${settings.user_cpu_ram}
-    - log: User Node Count - ${settings.user_node_count}
-    - log: Subnet - ${settings.subnet}
-    - log: Image Name - ${settings.image_name}
-    - test
-    - getWebinstallerLink
-    - script: |
-        return {
-          type: "success",
-          message: "Web Installer Link: [${globals.webinstaller_link}](${globals.webinstaller_link})"
-        }
+    - cmd[cp]: |-
+        bash ${globals.vap_dir}/vap.sh create \
+        --infra-flavor=${settings.infra_cpu_ram} \
+        --user-flavor=${settings.user_cpu_ram} \
+        --subnet=${settings.subnet} \
+        --image=${settings.image_name} \
+        --user-host-count=${settings.user_node_count} \
+        --infra-root-size=${settings.infra_os_storage_size} \
+        --infra-vz-size=${settings.infra_vz_storage_size} \
+        --user-root-size=${settings.user_os_storage_size} \
+        --user-vz-size=${settings.user_vz_storage_size} \
+        --format=json
