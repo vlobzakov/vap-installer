@@ -35,8 +35,10 @@ execResponse(){
 execAction(){
   local action="$1"
   local message="$2"
+  source ${VAP_ENVS}
   stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done";  } || {
     log "${message}...failed\n${stdout}\n";
+    responseValidate "${stdout}";
     kill -s TERM $TOP_PID;
   }
 }
@@ -129,13 +131,15 @@ getImages(){
   local cmd="${OPENSTACK} image list -f json"
   local full_images=$(execReturn "${cmd}" "Getting images list")
 
+  source ${VAP_ENVS}
+
   for row in $(echo "${full_images}" | jq -r '.[] | @base64'); do
     _jq() {
      echo "${row}" | base64 --decode | jq -r "${1}"
     }
     Name=$(_jq '.Name')
 
-    grep -qE "^vap-[0-9]{2}-[0-9]_[0-9]{14}" <<< ${Name} && {
+    grep -qE "^vap-[0-9]{2}-[0-9]" <<< ${Name} && {
       id=$((id+1))
       Status=$(_jq '.Status')
 
@@ -232,12 +236,17 @@ getWebinstallerLink(){
 }
 
 responseValidate(){
-#  source ${VAP_ENVS}
-#  local resp=$(${OPENSTACK} stack show ${VAP_STACK_NAME})
+  local response="$1"
+  local errorsArray="HTTP 401:Your credentials are incorrect or have expired,"
+  errorsArray+="HTTP 404:API version is incorrect,"
+  errorsArray+="Name or service not known:API endpoint URL is invalid"
 
-  local cmd="${OPENSTACK} stack show ${VAP_STACK_NAME}"
-  local output=$(execReturn "${cmd}" "Validation VHI")
-  echo $output
+  while read -d, -r pair; do
+    IFS=':' read -r key val <<<"$pair"
+    grep -q "$key" <<< "$response" && {
+      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "100" "$val"; } || { echo "$val"; exit 0; };
+    }
+  done <<<"$errorsArray,"
 }
 
 configure(){
@@ -297,6 +306,13 @@ configure(){
   echo "export CINDERCLIENT_INSECURE=true" >> ${VAP_ENVS};
   echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${VAP_ENVS};
   echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
+
+  execAction "${OPENSTACK} stack list" "Validation"
+  for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
+    grep -q "$stack" <<< "$VAP_STACK_NAME" && {
+      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "100" "Stack exist"; } || { echo "Stack exist"; exit 0; };
+    }
+  done
 
   getFlavors
   getInfraFlavors
@@ -388,8 +404,6 @@ create(){
   createcmd+=" --parameter user_swap_volume_size=8"
   createcmd+=" --parameter key_name=vap-installer-demo"
   createcmd+=" --wait"
-
-#  execAction "${createcmd}" "Creating new stack ${VAP_STACK_NAME}"
 
   ${createcmd}
 
