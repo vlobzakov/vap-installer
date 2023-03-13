@@ -287,6 +287,12 @@ configure(){
       shift
       shift
       ;;
+      --format=*)
+      FORMAT=${i#*=}
+      shift
+      shift
+      ;;
+
       *)
         ;;
     esac
@@ -306,6 +312,7 @@ configure(){
   echo "export CINDERCLIENT_INSECURE=true" >> ${VAP_ENVS};
   echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${VAP_ENVS};
   echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
+  [[ "x${FORMAT}" == "xjson" ]] && { echo "export FORMAT=${FORMAT}" >> ${VAP_ENVS}; }
 
   execAction "${OPENSTACK} stack list" "Validation"
   for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
