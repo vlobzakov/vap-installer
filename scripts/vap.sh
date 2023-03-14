@@ -21,6 +21,8 @@ MIN_INFRA_RAM=32000
 MIN_USER_VCPU=12
 MIN_USER_RAM=48000
 
+[[ -f "/var/log/installer.log" ]] && RUN_LOG="/var/log/installer.log"
+
 log(){
   local message=$1
   local timestamp
@@ -424,13 +426,11 @@ create(){
   createcmd+=" --parameter key_name=vap-installer-demo"
   createcmd+=" --wait"
 
-#  [[ "x${FORMAT}" == "xjson" ]] && { ${createcmd} >> ${RUN_LOG} ; } || { ${createcmd} ; };
+  [[ "x${FORMAT}" == "xjson" ]] && { execAction "${createcmd}" "Creating new stack" ; } || { ${createcmd} ; };
 
-[[ "x${FORMAT}" == "xjson" ]] && { execAction "${createcmd}" "Creating new stack" ; } || { ${createcmd} ; };
-#execAction "${createcmd}" "Creating new stack"
+  web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
 
-#web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
-#echo "Web Installer Link: $web_link"
+  [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${SUCCESS_CODE}" "Web Installer Link: $web_link"; } || { echo "Web Installer Link: $web_link"; };
 
 }
 
@@ -441,25 +441,5 @@ case ${1} in
 
     create)
       create "$@"
-      ;;
-
-    getSubnets)
-      getSubnets
-      ;;
-
-    getInfraFlavors)
-      getInfraFlavors
-      ;;
-
-    getUserFlavors)
-      getUserFlavors
-      ;;
-
-    getImages)
-      getImages
-      ;;
-
-    getWebinstallerLink)
-      getWebinstallerLink "$@"
       ;;
 esac
