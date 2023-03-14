@@ -306,6 +306,17 @@ configure(){
     esac
   done
 
+  if [ -z "${PROJECT_DOMAIN}" ] || [ -z "${USER_DOMAIN}" ] || \
+     [ -z "${PROJECT}" ] ||  [ -z "${USERNAME}" ] || \
+     [ -z "${PASSWORD}" ] ||  [ -z "${URL}" ] || \
+     [ -z "${VAP_STACK_NAME}" ]; then
+
+      echo "Not all arguments passed!"
+      usage
+      exit 1;
+
+  fi
+
   echo "export OS_PROJECT_DOMAIN_NAME=${PROJECT_DOMAIN}" > ${VAP_ENVS};
   echo "export OS_USER_DOMAIN_NAME=${USER_DOMAIN}" >> ${VAP_ENVS};
   echo "export OS_PROJECT_NAME=${PROJECT}" >> ${VAP_ENVS};
@@ -396,6 +407,17 @@ create(){
     esac
   done
 
+  if [ -z "${IMAGE}" ] || [ -z "${USER_HOST_COUNT}" ] || \
+     [ -z "${SUBNET}" ] ||  [ -z "${USER_FLAVOR}" ] || \
+     [ -z "${INFRA_FLAVOR}" ] ||  [ -z "${INFRA_ROOT_SIZE}" ] || \
+     [ -z "${USER_ROOT_SIZE}" ] ||  [ -z "${INFRA_VZ_SIZE}" ] || [ -z "${USER_VZ_SIZE}" ]; then
+
+      echo "Not all arguments passed!"
+      usage
+      exit 1;
+
+  fi
+
   _getValueById(){
     local id="$1"
     local arg="$2"
@@ -475,9 +497,6 @@ echo "                notice3"
 echo
 }
 
-usage
-
-
 case ${1} in
     configure)
       configure "$@"
@@ -486,4 +505,7 @@ case ${1} in
     create)
       create "$@"
       ;;
+    *)
+      echo "Please use $(basename "$BASH_SOURCE") configure or $(basename "$BASH_SOURCE") create"
+      usage
 esac
