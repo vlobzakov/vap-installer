@@ -1,465 +1,297 @@
-#!/bin/bash
+type: update 
+name: VAP Installer Add-On
+id: vap-installer-addon 
+targetEditions: any 
+logo: /images/logo-small.png
+description: Provision VHI infrastructure and deploy a new VAP on it
+baseUrl: https://raw.githubusercontent.com/sych74/vap-installer/cli
 
-OPENSTACK="/opt/jelastic-python311/bin/openstack"
+targetNodes:
+  nodeType:
+    - apache-python
 
-SUCCESS_CODE=0
-VALIDATION_ERROR_CODE=100
-FAIL_CODE=99
+globals:
+  vap_dir: /var/www/webroot
+  vap_settings: /var/www/webroot/.vapenv
+  openstack: /opt/jelastic-python311/bin/openstack
 
-BASE_DIR="$(pwd)"
+settings: 
+  configure:
+    submitUnchanged: true
+    fields: 
+      - type: string 
+        name: vhi_proj_name 
+        caption: VHI Project Name 
+        tooltip: "<span>Specify VHI project name you will use to create VMs in</span>"
+        required: true
+        value: cmp
+      - type: string 
+        name: vhi_username 
+        caption: Username 
+        tooltip: "<span>Specify VHI account username you will use to create VMs</span>"
+        required: true
+        value: Vadym.Lobzakov@virtuozzo.com
+      - type: string
+        inputType: password
+        name: vhi_password 
+        caption: Password 
+        tooltip: "<span>Specify VHI account password you will use to create VMs</span>"
+        required: true
+        value: V208-padlo
+      - type: string 
+        name: vhi_url 
+        caption: VHI URL 
+        tooltip: "<span>Specify VHI cluster API endpoint URL</span>"
+        required: true
+        value: https://eu4-cloud.virtuozzo.com:5000/v3
+      - type: string 
+        name: vap_stack_name 
+        caption: VAP Project Domain 
+        tooltip: "<span>Come up with VAP Project Domain Name</span>"
+        required: true
 
-RUN_LOG="$BASE_DIR/installer.log"
-VAP_ENVS="$BASE_DIR/.vapenv"
-FLAVORS_JSON="$BASE_DIR/flavors.json"
-INFRA_FLAVORS_JSON="$BASE_DIR/infraFlavors.json"
-USER_FLAVORS_JSON="$BASE_DIR/userFlavors.json"
-IMAGES_JSON="$BASE_DIR/images.json"
-SUBNETS_JSON="$BASE_DIR/subnets.json"
-
-MIN_INFRA_VCPU=8
-MIN_INFRA_RAM=32000
-MIN_USER_VCPU=12
-MIN_USER_RAM=48000
-
-log(){
-  local message=$1
-  local timestamp
-  timestamp=`date "+%Y-%m-%d %H:%M:%S"`
-  echo -e "[${timestamp}]: ${message}" >> ${RUN_LOG}
-}
-
-execResponse(){
-  local result=$1
-  local message=$2
-  local output_json="{\"result\": ${result}, \"out\": \"${message}\"}"
-  echo $output_json
-}
-
-execAction(){
-  local action="$1"
-  local message="$2"
-  source ${VAP_ENVS}
-  stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done";  } || {
-    log "${message}...failed\n${stdout}\n";
-    responseValidate "${stdout}";
-  }
-}
-
-execReturn(){
-  local action="$1"
-  local message="$2"
-  source ${VAP_ENVS}
-  stdout=$( { ${action}; } 2>&1 ) && { log "${message}...done"; echo ${stdout}; } || {
-    log "${message}...failed\n${stdout}\n";
-    responseValidate "${stdout}";
-  }
-}
-
-getFlavors(){
-  local cmd="${OPENSTACK} flavor list -f json"
-  local output=$(execReturn "${cmd}" "Getting flavors list")
-  echo $output > $FLAVORS_JSON
-}
-
-getFlavorsByParam(){
-  local name="$1"
-  local min_cpu="$2"
-  local min_ram="$3"
-  local title="$4"
-  local id=0
-  local flavors=$(cat $FLAVORS_JSON)
-  local infra_flavors=$(jq -n '[]')
-
-  for flavor in $(echo "${flavors}" | jq -r '.[] | @base64'); do
-    _jq() {
-     echo "${flavor}" | base64 --decode | jq -r "${1}"
-    }
-    RAM=$(_jq '.RAM')
-    VCPUs=$(_jq '.VCPUs')
-
-    [[ $RAM -ge $min_ram  && $VCPUs -ge $min_cpu  ]] && {
-
-      id=$((id+1))
-      Name=$(_jq '.Name')
-      Ephemeral=$(_jq '.Ephemeral')
-
-      infra_flavors=$(echo $infra_flavors | jq \
-        --argjson id $id \
-        --arg Name "$Name" \
-        --arg RAM  $RAM \
-        --arg VCPUs  $VCPUs \
-        --arg Ephemeral  "$Ephemeral" \
-      '. += [{"id": $id, "Name": $Name, "RAM": $RAM, "VCPUs": $VCPUs, "Ephemeral": $Ephemeral}]')
-    }
-  done
-
-  local output="{\"result\": 0, \"flavors\": ${infra_flavors}}"
-  echo $infra_flavors > ${name}
-
-  if [[ "x${FORMAT}" == "xjson" ]]; then
-    log "Creating ${title}...done";
-  else
-    seperator=---------------------------------------------------------------------------------------------------
-    rows="%-5s| %-20s| %-20s| %-20s| %s\n"
-    TableWidth=100
-    echo -e "\n\n${title}"
-    printf "%.${TableWidth}s\n" "$seperator"
-    printf "%-5s| %-20s| %-20s| %-20s| %s\n" ID Name RAM VCPUs Ephemeral
-    printf "%.${TableWidth}s\n" "$seperator"
-
-    for row in $(echo "${infra_flavors}" | jq -r '.[] | @base64'); do
-      _jq() {
-        echo "${row}" | base64 --decode | jq -r "${1}"
+  create:
+    fields: []
+    onBeforeInit: |
+      var infraFlavorList = getJsonFromFile("${globals.vap_dir}/infraFlavors.json");
+      var infraFlavorListPrepared = prepareFlavorsList(JSON.parse(infraFlavorList));
+      var userFlavorList = getJsonFromFile("${globals.vap_dir}/userFlavors.json");
+      var userFlavorListPrepared = prepareFlavorsList(JSON.parse(userFlavorList));
+      var imagesList = getJsonFromFile("${globals.vap_dir}/images.json");
+      var imageListPrepared = prepareImageList(JSON.parse(imagesList));
+      var subnetsList = getJsonFromFile("${globals.vap_dir}/subnets.json");
+      var subnetListPrepared = prepareSubnetList(JSON.parse(subnetsList));
+      var vapStackName = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && echo $VAP_STACK_NAME' }]), true).responses[0].out;      
+       
+      function getJsonFromFile(jsonFile) {
+        var cmd = "cat " + jsonFile;
+        var resp = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": cmd }]), true);
+        if (resp.result != 0) return resp;
+        return resp.responses[0].out;
       }
-      id=$(_jq '.id')
-      Name=$(_jq '.Name')
-      RAM=$(_jq '.RAM')
-      VCPUs=$(_jq '.VCPUs')
-      Ephemeral=$(_jq '.Ephemeral')
-      printf "$rows" "$id" "$Name" "$RAM" "$VCPUs" "$Ephemeral"
-    done
-  fi
-
-}
-
-getInfraFlavors(){
-  getFlavorsByParam "${INFRA_FLAVORS_JSON}" "${MIN_INFRA_VCPU}" "${MIN_INFRA_RAM}" "Infra node flavors"
-}
-
-getUserFlavors(){
-  getFlavorsByParam "${USER_FLAVORS_JSON}" "${MIN_USER_VCPU}" "${MIN_USER_RAM}" "User node flavors"
-}
-
-getImages(){
-  local id=0
-  local images=$(jq -n '[]')
-  local cmd="${OPENSTACK} image list -f json"
-  local full_images=$(execReturn "${cmd}" "Getting images list")
-
-  source ${VAP_ENVS}
-
-  for row in $(echo "${full_images}" | jq -r '.[] | @base64'); do
-    _jq() {
-     echo "${row}" | base64 --decode | jq -r "${1}"
-    }
-    Name=$(_jq '.Name')
-
-    grep -qE "^vap-[0-9]{2}-[0-9]" <<< ${Name} && {
-      id=$((id+1))
-      Status=$(_jq '.Status')
-
-      images=$(echo $images | jq \
-        --argjson id "$id" \
-        --arg Name "$Name" \
-        --arg Status  "$Status" \
-      '. += [{"id": $id, "Name": $Name, "Status": $Status}]')
-    }
-  done
-
-  local output="{\"result\": 0, \"images\": ${images}}"
-  echo $images > ${IMAGES_JSON}
-
-  if [[ "x${FORMAT}" == "xjson" ]]; then
-    log "Validation images...done";
-  else
-    seperator=---------------------------------------------------------------------------------------------------
-    rows="%-5s| %-50s| %s\n"
-    TableWidth=100
-    echo -e "\n\nVHI Images List"
-    printf "%.${TableWidth}s\n" "$seperator"
-    printf "%-5s| %-50s| %s\n" ID Name Status
-    printf "%.${TableWidth}s\n" "$seperator"
-
-    for row in $(echo "${images}" | jq -r '.[] | @base64'); do
-      _jq() {
-        echo "${row}" | base64 --decode | jq -r "${1}"
-      }
-      id=$(_jq '.id')
-      Name=$(_jq '.Name')
-      Status=$(_jq '.Status')
-      printf "$rows" "$id" "$Name" "$Status"
-    done
-  fi
-
-}
-
-getSubnets(){
-  local id=0
-  local subnets=$(jq -n '[]')
-  source ${VAP_ENVS}
-  for i in $(${OPENSTACK} network list -f value -c Name); do
-    [[ "$(${OPENSTACK} network show $i -f value -c provider:network_type)" == "flat" ]] && {
-      for subnet in $(${OPENSTACK} network show $i -f json -c subnets | jq -r .subnets[]); do
-        detail_subnet="$(${OPENSTACK} subnet show $subnet -f json)"
-        subnet_name="$(echo $detail_subnet | jq -r .name)"
-        cidr="$(echo $detail_subnet | jq -r .cidr)"
-        grep -qE "(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^169\.254)" <<< $cidr || {
-          id=$((id+1))
-          subnets=$(echo $subnets | jq \
-            --argjson id "$id" \
-            --arg Name "$subnet_name" \
-            --arg Network "$subnet" \
-            --arg Subnet "$cidr" \
-          '. += [{"id": $id, "Name": $Name, "Network": $Network, "Subnet": $Subnet}]')
+      
+      function prepareFlavorsList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
+            value: values[i].id
+          });   
         }
-      done
-    }
-  done
-
-  local output="{\"result\": 0, \"subnets\": ${subnets}}"
-  echo $subnets > ${SUBNETS_JSON}
-
-  if [[ "x${FORMAT}" == "xjson" ]]; then
-    log "Getting subnets...done";
-  else
-    seperator=---------------------------------------------------------------------------------------------------
-    rows="%-5s| %-20s| %-50s| %s\n"
-    TableWidth=100
-    echo -e "\n\nVHI Cluster Subnets"
-    printf "%.${TableWidth}s\n" "$seperator"
-    printf "%-5s| %-20s| %-50s| %s\n" ID Name Network Subnet
-    printf "%.${TableWidth}s\n" "$seperator"
-
-    for row in $(echo "${subnets}" | jq -r '.[] | @base64'); do
-      _jq() {
-        echo "${row}" | base64 --decode | jq -r "${1}"
+        return aResultValues;
       }
-      id=$(_jq '.id')
-      Name=$(_jq '.Name')
-      Network=$(_jq '.Network')
-      Subnet=$(_jq '.Subnet')
-      printf "$rows" "$id" "$Name" "$Network" "$Subnet"
-    done
-  fi
-}
+      
+      function prepareSubnetList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Subnet,
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
 
-getWebinstallerLink(){
-  local stack_name="$1"
-  local cmd="${OPENSTACK} stack output show ${stack_name} webinstaller_link -f value -c output_value "
-  local output=$(execReturn "${cmd}" "Getting webinstaller_link for ${stack_name} stack")
-  echo $output
-}
+      function prepareImageList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Name,
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
 
-responseValidate(){
-  local response="$1"
-  local errorsArray="HTTP 401:Your credentials are incorrect or have expired,"
-  errorsArray+="HTTP 404:API version is incorrect,"
-  errorsArray+="Name or service not known:API endpoint URL is invalid"
+      settings.fields.push({
+        "caption": "VAP Stack Name",
+        "type": "string",
+        "tooltip": "VAP Stack Name",          
+        "name": "vap_stack_name",
+        "required": true,
+        "value": vapStackName
+      }, {
+        "caption": "RAM&CPU Infra",
+        "type": "list",
+        "tooltip": {
+          "text": "<h3>Hardware Requirements for Infra</h3>Make sure the Flavor fits the requirements highlighted in red for required installation type&#58; <b>PoC, Sandbox, Production, High-Performance Production</b>.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a><p></p> <img width='800' height='250' src='https://raw.githubusercontent.com/sych74/vap-installer/main/images/hw-requirements-INFRA.png'>",
+          "tipParams": null,
+          "maxWidth": 830,
+          "minWidth": 300
+        },
+        "name": "infra_cpu_ram",
+        "required": true,
+        "values": infraFlavorListPrepared
+      }, {
+        "caption": "RAM&CPU User",
+        "type": "list",
+        "tooltip": {
+          "text": "<h3>Hardware Requirements for User Nodes</h3>Make sure the Flavor fits the requirements highlighted in red for required installation type&#58; <b>PoC, Sandbox, Production, High-Performance Production</b>.<a href='https://www.virtuozzo.com/application-platform-ops-docs/hardware-requirements-local-storage/'>Learn More</a><p></p> <img width='800' height='250' src='https://raw.githubusercontent.com/sych74/vap-installer/main/images/hw-requirements-USER.png'>",
+          "tipParams": null,
+          "maxWidth": 830,
+          "minWidth": 300
+      },
+        "name": "user_cpu_ram",
+        "required": true,
+        "values": userFlavorListPrepared
+      }, {
+        "type": "compositefield",
+        "caption": "Infra OS/Vz Data, GB",
+        "defaultMargins": "0 12 0 0",
+        "tooltip": {
+          "text": "Storage volume size for '<b>/</b>' and '<b>/vz</b>' partition for Infra nodes",
+          "minWidth": 370
+        },        
+        "items": [{
+          "type": "spinner",
+          "name": "infra_os_storage_size",
+          "min": 100,
+          "max": 2000
+        }, {
+          "type": "displayfield",
+          "markup": "/",
+          "cls": "x-form-item-label",
+          "width": "10"       
+        }, {
+          "type": "spinner",
+          "name": "infra_vz_storage_size",
+          "min": 400,
+          "max": 5000
+        }]
+      }, {
+        "type": "compositefield",
+        "caption": "User OS/Vz Data, GB",
+        "defaultMargins": "0 12 0 0",
+        "tooltip": {
+          "text": "Storage volume size for '<b>/</b>' and '<b>/vz</b>' partition for User nodes",
+          "minWidth": 370
+        },        
+        "items": [{
+          "type": "spinner",
+          "name": "user_os_storage_size",
+          "min": 100,
+          "max": 2000
+        }, {
+          "type": "displayfield",
+          "markup": "/",
+          "cls": "x-form-item-label",
+          "width": "10"       
+        }, {
+          "type": "spinner",
+          "name": "user_vz_storage_size",
+          "min": 800,
+          "max": 10000
+        }]
+      },  {
+        "caption": "User Node Count",
+        "type": "spinner",
+        "tooltip": "User Node Count",          
+        "name": "user_node_count",
+        "min": 1,
+        "max": 5
+      }, {
+        "caption": "VHI Public Subnet",
+        "type": "list",
+        "tooltip": "Select required VHI cluster subnet",          
+        "name": "subnet",
+        "required": true,
+        "values": subnetListPrepared
+      }, {
+        "caption": "VAP Image Name",
+        "type": "list",
+        "tooltip": "Select required qcow2 VAP image name",          
+        "name": "image_name",
+        "required": true,
+        "values": imageListPrepared
+      })
 
-  while read -d, -r pair; do
-    IFS=':' read -r key val <<<"$pair"
-    grep -q "$key" <<< "$response" && {
-      [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${VALIDATION_ERROR_CODE}" "$val"; exit 0; } || { echo "$val"; exit 0; };
-    }
-  done <<<"$errorsArray,"
-  [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${FAIL_CODE}" "Please check the ${RUN_LOG} log file for details."; exit 0; } || { echo "$response"; exit 0; };
-}
+      return settings;
 
-configure(){
-  for i in "$@"; do
-    case $i in
-      --project-domain=*)
-      PROJECT_DOMAIN=${i#*=}
-      shift
-      shift
-      ;;
-      --user-domain=*)
-      USER_DOMAIN=${i#*=}
-      shift
-      shift
-      ;;
-      --project=*)
-      PROJECT=${i#*=}
-      shift
-      shift
-      ;;
-      --username=*)
-      USERNAME=${i#*=}
-      shift
-      shift
-      ;;
-      --password=*)
-      PASSWORD=${i#*=}
-      shift
-      shift
-      ;;
-      --url=*)
-      URL=${i#*=}
-      shift
-      shift
-      ;;
-      --vap-stack-name=*)
-      VAP_STACK_NAME=${i#*=}
-      shift
-      shift
-      ;;
-      --format=*)
-      FORMAT=${i#*=}
-      shift
-      shift
-      ;;
+buttons:
+- caption: Configure
+  action: configure
+  settings: configure
+  title: Configure VHI Cluster Details
+  loadingText: Configuring...
+  submitButtonText: Configure
+  successText: Configured successfully.
+  
+- caption: New VAP
+  action: create
+  loadingText: Creating VAP...
+  settings: create
+  logsPath: /var/log/installer.log
+  successText: The VAP have been successfully created.
+  title: New VAP
+  submitButtonText: New VAP
+  confirmText: Create New VAP?
 
-      *)
-        ;;
-    esac
-  done
+responses:
+  99:
+    type: warning
+    message: |
+      Errors were discovered during the VAP creating.
+      Please check the **/var/log/installer.log** log file for details. 
 
-  echo "export OS_PROJECT_DOMAIN_NAME=${PROJECT_DOMAIN}" > ${VAP_ENVS};
-  echo "export OS_USER_DOMAIN_NAME=${USER_DOMAIN}" >> ${VAP_ENVS};
-  echo "export OS_PROJECT_NAME=${PROJECT}" >> ${VAP_ENVS};
-  echo "export OS_USERNAME=${USERNAME}" >> ${VAP_ENVS};
-  echo "export OS_PASSWORD=${PASSWORD}" >> ${VAP_ENVS};
-  echo "export OS_AUTH_URL=${URL}" >> ${VAP_ENVS};
-  echo "export OS_IDENTITY_API_VERSION=3" >> ${VAP_ENVS};
-  echo "export OS_AUTH_TYPE=password" >> ${VAP_ENVS};
-  echo "export OS_INSECURE=true" >> ${VAP_ENVS};
-  echo "export NOVACLIENT_INSECURE=true" >> ${VAP_ENVS};
-  echo "export NEUTRONCLIENT_INSECURE=true" >> ${VAP_ENVS};
-  echo "export CINDERCLIENT_INSECURE=true" >> ${VAP_ENVS};
-  echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${VAP_ENVS};
-  echo "export VAP_STACK_NAME=${VAP_STACK_NAME}" >> ${VAP_ENVS};
-  [[ "x${FORMAT}" == "xjson" ]] && { echo "export FORMAT=${FORMAT}" >> ${VAP_ENVS}; }
+onInstall:
+  - cmd[cp]: |-
+      echo "VAP installer add-on logs" > /var/log/installer.log;
+      chown jelastic /var/log/installer.log;
+    user: root
 
-  execAction "${OPENSTACK} stack list" "Parameters validation"
-  for stack in $(source ${VAP_ENVS};  ${OPENSTACK} stack list -f value -c 'Stack Name'); do
-    grep -q "$stack" <<< "$VAP_STACK_NAME" && {
-      [[ "x${FORMAT}" == "xjson" ]] && {
-        execResponse "${VALIDATION_ERROR_CODE}" "Stack name $VAP_STACK_NAME is already taken"; exit 0;
-      } || {
-        echo "Stack name $VAP_STACK_NAME is already taken"; exit 0;
-      };
-    }
-  done
+  - installOSclient
+  - getScripts
 
-  getFlavors
-  getInfraFlavors
-  getUserFlavors
-  getSubnets
-  getImages
+actions:
+  configure:
+    - cmd[cp]: |-
+        bash ${globals.vap_dir}/vap.sh configure \
+        --project-domain=${settings.vhi_proj_name} \
+        --user-domain=${settings.vhi_proj_name} \
+        --project=${settings.vhi_proj_name} \
+        --username=${settings.vhi_username} \
+        --password=${settings.vhi_password} \
+        --url=${settings.vhi_url} \
+        --vap-stack-name=${settings.vap_stack_name} \
+        --format=json
+    - script: |
+        var resp = JSON.parse(${response.out});
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { result: 0}
 
-  [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${SUCCESS_CODE}" "Сonfigured successfully"; }
+  getScripts:
+    cmd[cp]: |-
+      wget ${baseUrl}/scripts/VAP.yaml -O ${globals.vap_dir}/VAP.yaml;
+      wget ${baseUrl}/scripts/VAP_user.yaml -O ${globals.vap_dir}/VAP_user.yaml;
+      wget ${baseUrl}/scripts/infra.sh -O ${globals.vap_dir}/infra.sh;
+      wget ${baseUrl}/scripts/project.sh -O ${globals.vap_dir}/project.sh;
+      wget ${baseUrl}/scripts/user.sh -O ${globals.vap_dir}/user.sh;
+      wget ${baseUrl}/scripts/vap.sh -O ${globals.vap_dir}/vap.sh;
 
-}
+  installOSclient: 
+    - cmd[cp]: |- 
+        pip install python-openstackclient
+        pip install python-heatclient
 
-create(){
-  for i in "$@"; do
-    case $i in
-      --image=*)
-      IMAGE=${i#*=}
-      shift
-      shift
-      ;;
-      --user-host-count=*)
-      USER_HOST_COUNT=${i#*=}
-      shift
-      shift
-      ;;
-      --subnet=*)
-      SUBNET=${i#*=}
-      shift
-      shift
-      ;;
-      --user-flavor=*)
-      USER_FLAVOR=${i#*=}
-      shift
-      shift
-      ;;
-      --infra-flavor=*)
-      INFRA_FLAVOR=${i#*=}
-      shift
-      shift
-      ;;
-      --infra-root-size=*)
-      INFRA_ROOT_SIZE=${i#*=}
-      shift
-      shift
-      ;;
-      --user-root-size=*)
-      USER_ROOT_SIZE=${i#*=}
-      shift
-      shift
-      ;;
-      --infra-vz-size=*)
-      INFRA_VZ_SIZE=${i#*=}
-      shift
-      shift
-      ;;
-      --user-vz-size=*)
-      USER_VZ_SIZE=${i#*=}
-      shift
-      shift
-      ;;
-      *)
-        ;;
-    esac
-  done
-
-  _getValueById(){
-    local id="$1"
-    local arg="$2"
-    local json_name="$3"
-    local result=$(jq ".[] | select(.id == ${id}) | .${arg}" ${json_name} | tr -d '"')
-    echo $result
-  }
-
-  source ${VAP_ENVS}
-  IMAGE=$(_getValueById $IMAGE "Name" "images.json")
-  SUBNET=$(_getValueById $SUBNET "Name" "subnets.json")
-  INFRA_FLAVOR=$(_getValueById $INFRA_FLAVOR "Name" "infraFlavors.json")
-  USER_FLAVOR=$(_getValueById $USER_FLAVOR "Name" "userFlavors.json")
-
-  local createcmd="${OPENSTACK} stack create ${VAP_STACK_NAME} -t VAP.yaml"
-  createcmd+=" --parameter image=${IMAGE}"
-  createcmd+=" --parameter user_hosts_count=${USER_HOST_COUNT}"
-  createcmd+=" --parameter public_network=public"
-  createcmd+=" --parameter public_subnet=${SUBNET}"
-  createcmd+=" --parameter infra_flavor=${INFRA_FLAVOR}"
-  createcmd+=" --parameter user_flavor=${USER_FLAVOR}"
-  createcmd+=" --parameter infra_root_volume_size=${INFRA_ROOT_SIZE}"
-  createcmd+=" --parameter user_root_volume_size=${USER_ROOT_SIZE}"
-  createcmd+=" --parameter infra_vz_volume_size=${INFRA_VZ_SIZE}"
-  createcmd+=" --parameter user_vz_volume_size=${USER_VZ_SIZE}"
-  createcmd+=" --parameter infra_swap_volume_size=8"
-  createcmd+=" --parameter user_swap_volume_size=8"
-  createcmd+=" --parameter key_name=vap-installer-demo"
-  createcmd+=" --wait"
-
-#  [[ "x${FORMAT}" == "xjson" ]] && { ${createcmd} >> ${RUN_LOG} ; } || { ${createcmd} ; };
-
-[[ "x${FORMAT}" == "xjson" ]] && { execAction "${createcmd}" "Creating new stack" ; } || { ${createcmd} ; };
-#execAction "${createcmd}" "Creating new stack"
-
-#web_link=$(getWebinstallerLink ${VAP_STACK_NAME})
-#echo "Web Installer Link: $web_link"
-
-}
-
-case ${1} in
-    configure)
-      configure "$@"
-      ;;
-
-    create)
-      create "$@"
-      ;;
-
-    getSubnets)
-      getSubnets
-      ;;
-
-    getInfraFlavors)
-      getInfraFlavors
-      ;;
-
-    getUserFlavors)
-      getUserFlavors
-      ;;
-
-    getImages)
-      getImages
-      ;;
-
-    getWebinstallerLink)
-      getWebinstallerLink "$@"
-      ;;
-esac
+  create:
+    - cmd[cp]: |-
+        bash ${globals.vap_dir}/vap.sh create \
+        --infra-flavor=${settings.infra_cpu_ram} \
+        --user-flavor=${settings.user_cpu_ram} \
+        --subnet=${settings.subnet} \
+        --image=${settings.image_name} \
+        --user-host-count=${settings.user_node_count} \
+        --infra-root-size=${settings.infra_os_storage_size} \
+        --infra-vz-size=${settings.infra_vz_storage_size} \
+        --user-root-size=${settings.user_os_storage_size} \
+        --user-vz-size=${settings.user_vz_storage_size} \
+        --format=json
+    - script: |
+        var resp = JSON.parse(${response.out});
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { result: 0}
