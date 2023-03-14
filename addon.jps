@@ -294,4 +294,4 @@ actions:
         var resp = JSON.parse(${response.out});
         if (resp.result == 100) return { type: "warning", message: resp.out };
         if (resp.result == 99) return { result: 99 };
-        return { result: 0}
+        return { type: "success", message: resp.out };
