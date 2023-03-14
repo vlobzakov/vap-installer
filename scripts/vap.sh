@@ -337,6 +337,8 @@ configure(){
   getSubnets
   getImages
 
+  [[ "x${FORMAT}" == "xjson" ]] && { execResponse "${SUCCESS_CODE}" "Сonfigured successfully"; }
+
 }
 
 create(){
