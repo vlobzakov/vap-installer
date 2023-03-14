@@ -434,6 +434,50 @@ create(){
 
 }
 
+usage() {
+SCRIPTNAME=$(basename "$BASH_SOURCE")
+echo " USAGE:"
+echo "   CONFIGURE VHI CLUSTER DETAILS:"
+echo "       COMMAND:  "
+echo "             $SCRIPTNAME configure --project-domain=[PROJECT_DOMAIN] --user-domain=[USER_DOMAIN] --project=[PROJECT] --username=[USERNAME] --password=[PASSWORD] --url=[URL] --vap-stack-name=[STACK NAME] "
+echo "       ARGUMENTS:    "
+echo "             --project-domain - VHI cluster project name the user account belongs to"
+echo "             --user-domain - VHI cluster project name the user account belongs to"
+echo "             --project - VHI cluster project name the user account belongs to"
+echo "             --username - VHI cluster account username"
+echo "             --password - VHI cluster account password"
+echo "             --url - VHI cluster API endpoint URL"
+echo "             --vap-stack-name - Specify VHI cluster API endpoint URL"
+echo
+echo "        NOTICE:"
+echo "              - notice1."
+echo "                notice2."
+echo "                notice3"
+echo
+echo "   CREATE NEW VAP:"
+echo "       COMMAND:  "
+echo "             $SCRIPTNAME create --infra-flavor=1 --user-flavor=1 --subnet=1 --image=2 --user-host-count=1 --infra-root-size=100 --infra-vz-size=400 --user-root-size=100 --user-vz-size=800 "
+echo "       ARGUMENTS:    "
+echo "             --infra-flavor - ID of nfra node flavor "
+echo "             --user-flavor - ID of User node flavor"
+echo "             --subnet - ID of public subnet"
+echo "             --image - ID of VAP image available on VHI cluster"
+echo "             --user-host-count - Number of user host nodes to be created"
+echo "             --infra-root-size - Infra node storage volume size in GB"
+echo "             --infra-vz-size - Infra node storage volume size in GB"
+echo "             --user-root-size - User node storage volume size in GB"
+echo "             --user-vz-size - User node  storage volume size in GB"
+echo
+echo "        NOTICE:"
+echo "              - notice1."
+echo "                notice2."
+echo "                notice3"
+echo
+}
+
+usage
+
+
 case ${1} in
     configure)
       configure "$@"
