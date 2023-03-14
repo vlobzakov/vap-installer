@@ -4,13 +4,14 @@ id: vap-installer-addon
 targetEditions: any 
 logo: /images/logo-small.png
 description: Provision VHI infrastructure and deploy a new VAP on it
-baseUrl: https://raw.githubusercontent.com/sych74/vap-installer/main
+baseUrl: https://raw.githubusercontent.com/sych74/vap-installer/cli
 
 targetNodes:
   nodeType:
     - apache-python
 
 globals:
+  vap_dir: /var/www/webroot
   vap_settings: /var/www/webroot/.vapenv
   openstack: /opt/jelastic-python311/bin/openstack
 
@@ -29,20 +30,20 @@ settings:
         caption: Username 
         tooltip: "<span>Specify VHI account username you will use to create VMs</span>"
         required: true
-        
+        value: Vadym.Lobzakov@virtuozzo.com
       - type: string
         inputType: password
         name: vhi_password 
         caption: Password 
         tooltip: "<span>Specify VHI account password you will use to create VMs</span>"
         required: true
-        
+        value: V208-padlo
       - type: string 
         name: vhi_url 
         caption: VHI URL 
         tooltip: "<span>Specify VHI cluster API endpoint URL</span>"
         required: true
-        
+        value: https://eu4-cloud.virtuozzo.com:5000/v3
       - type: string 
         name: vap_stack_name 
         caption: VAP Project Domain 
@@ -52,35 +53,55 @@ settings:
   create:
     fields: []
     onBeforeInit: |
-      var minInfraCpu = 8, minInfraRam = 32000;
-      var minUserCpu = 12, minUserRam = 48000;
-      var subnetListPrepared = [], flavorListPrepared = [], publicIDs, subnetID;
-      var networkList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": 'source ${globals.vap_settings} && ${globals.openstack} network list -f json' }]), true).responses[0].out;
-      var subnetList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack subnet list -f json' }]), true).responses[0].out;
-      var flavorList = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && /opt/jelastic-python311/bin/openstack flavor list -f json' }]), true).responses[0].out;
+      var infraFlavorList = getJsonFromFile("${globals.vap_dir}/infraFlavors.json");
+      var infraFlavorListPrepared = prepareFlavorsList(JSON.parse(infraFlavorList));
+      var userFlavorList = getJsonFromFile("${globals.vap_dir}/userFlavors.json");
+      var userFlavorListPrepared = prepareFlavorsList(JSON.parse(userFlavorList));
+      var imagesList = getJsonFromFile("${globals.vap_dir}/images.json");
+      var imageListPrepared = prepareImageList(JSON.parse(imagesList));
+      var subnetsList = getJsonFromFile("${globals.vap_dir}/subnets.json");
+      var subnetListPrepared = prepareSubnetList(JSON.parse(subnetsList));
       var vapStackName = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ command: 'source .vapenv && echo $VAP_STACK_NAME' }]), true).responses[0].out;      
-
-      publicIDs = JSON.parse(networkList).find(x => x.Name === 'public').Subnets;
-      for (var i = 0, n = publicIDs.length; i < n; i++) {
-        subnetID = JSON.parse(subnetList).find(x => x.ID === publicIDs[i]);
-        subnetListPrepared.push({
-          caption: subnetID.Subnet,
-          value: subnetID.Name
-        });
+       
+      function getJsonFromFile(jsonFile) {
+        var cmd = "cat " + jsonFile;
+        var resp = jelastic.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": cmd }]), true);
+        if (resp.result != 0) return resp;
+        return resp.responses[0].out;
       }
-
-      var infraFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minInfraCpu,minInfraRam);
-      var userFlavorListPrepared = prepareFlavors(JSON.parse(flavorList),minUserCpu,minUserRam);
       
-      function prepareFlavors(values, minCpu, minRam) {
+      function prepareFlavorsList(values) {
         var aResultValues = [];
         values = values || [];
         for (var i = 0, n = values.length; i < n; i++) {
-          if ( (parseInt(values[i].VCPUs, 10) >= minCpu) && (parseInt(values[i].RAM, 10) >= minRam))
-            aResultValues.push({
-              caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
-              value: values[i].Name
-            });   
+          aResultValues.push({
+            caption: values[i].RAM +" Mb "+ values[i].VCPUs +" VCPUs ",
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
+      
+      function prepareSubnetList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Subnet,
+            value: values[i].id
+          });   
+        }
+        return aResultValues;
+      }
+
+      function prepareImageList(values) {
+        var aResultValues = [];
+        values = values || [];
+        for (var i = 0, n = values.length; i < n; i++) {
+          aResultValues.push({
+            caption: values[i].Name,
+            value: values[i].id
+          });   
         }
         return aResultValues;
       }
@@ -180,11 +201,11 @@ settings:
         "values": subnetListPrepared
       }, {
         "caption": "VAP Image Name",
-        "type": "string",
+        "type": "list",
         "tooltip": "Select required qcow2 VAP image name",          
         "name": "image_name",
         "required": true,
-        "value": "vap-82-2_20230301234215"
+        "values": imageListPrepared
       })
 
       return settings;
@@ -202,64 +223,54 @@ buttons:
   action: create
   loadingText: Creating VAP...
   settings: create
+  logsPath: /var/log/installer.log
   successText: The VAP have been successfully created.
   title: New VAP
   submitButtonText: New VAP
   confirmText: Create New VAP?
 
-onInstall: 
+responses:
+  99:
+    type: warning
+    message: |
+      Errors were discovered during the VAP creating.
+      Please check the **/var/log/installer.log** log file for details. 
+
+onInstall:
+  - cmd[cp]: |-
+      echo "VAP installer add-on logs" > /var/log/installer.log;
+      chown jelastic /var/log/installer.log;
+    user: root
+
   - installOSclient
-  - getProjectsConf
+  - getScripts
 
 actions:
   configure:
-    - addVAPconfigureSettings
-    - validateOS
+    - cmd[cp]: |-
+        bash ${globals.vap_dir}/vap.sh configure \
+        --project-domain=${settings.vhi_proj_name} \
+        --user-domain=${settings.vhi_proj_name} \
+        --project=${settings.vhi_proj_name} \
+        --username=${settings.vhi_username} \
+        --password=${settings.vhi_password} \
+        --url=${settings.vhi_url} \
+        --vap-stack-name=${settings.vap_stack_name} \
+        --format=json
+    - script: |
+        var resp = JSON.parse(${response.out});
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { result: 0}
 
-  getProjectsConf:
+  getScripts:
     cmd[cp]: |-
-      wget ${baseUrl}/configs/VAP.yaml -O /var/www/webroot/VAP.yaml;
-      wget ${baseUrl}/configs/VAP_user.yaml -O /var/www/webroot/VAP_user.yaml;
-      wget ${baseUrl}/configs/infra.sh -O /var/www/webroot/infra.sh;
-      wget ${baseUrl}/configs/project.sh -O /var/www/webroot/project.sh;
-      wget ${baseUrl}/configs/user.sh -O /var/www/webroot/user.sh;
-
-  addVAPconfigureSettings:
-    cmd[cp]: |-
-      echo "export OS_PROJECT_DOMAIN_NAME=${settings.vhi_proj_name}" > ${globals.vap_settings};
-      echo "export OS_USER_DOMAIN_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings};
-      echo "export OS_PROJECT_NAME=${settings.vhi_proj_name}" >> ${globals.vap_settings};
-      echo "export OS_USERNAME=${settings.vhi_username}" >> ${globals.vap_settings};
-      echo "export OS_PASSWORD=${settings.vhi_password}" >> ${globals.vap_settings};
-      echo "export OS_AUTH_URL=${settings.vhi_url}" >> ${globals.vap_settings};
-      echo "export OS_IDENTITY_API_VERSION=3" >> ${globals.vap_settings};
-      echo "export OS_AUTH_TYPE=password" >> ${globals.vap_settings};
-      echo "export OS_INSECURE=true" >> ${globals.vap_settings};
-      echo "export NOVACLIENT_INSECURE=true" >> ${globals.vap_settings};
-      echo "export NEUTRONCLIENT_INSECURE=true" >> ${globals.vap_settings};
-      echo "export CINDERCLIENT_INSECURE=true" >> ${globals.vap_settings};
-      echo "export OS_PLACEMENT_API_VERSION=1.22" >> ${globals.vap_settings};
-      echo "export VAP_STACK_NAME=${settings.vap_stack_name}" >> ${globals.vap_settings};
-
-  validateOS:
-    script: |
-        var message = "";
-        var command = "source ${globals.vap_settings} && ${globals.openstack} stack show ${settings.vap_stack_name} -f json";
-        resp = api.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": command }]), true);
-        if (resp.result != 0) {
-          var errOut = resp.responses[0].errOut;
-          if (errOut.includes("HTTP 401"))
-            return { type: "warning", message: "Your credentials are incorrect or have expired" };
-          if (errOut.includes("HTTP 404"))
-            return { type: "warning", message: "API version is incorrect" };
-          if (errOut.includes("Name or service not known"))
-            return { type: "warning", message: "API endpoint URL is invalid" };
-          if (errOut.includes("Stack not found"))
-            return { result: 0 };
-          return resp;
-        }
-        if (resp.result == 0) 
-          return { type: "warning", message: "Stack name is already taken" };
+      wget ${baseUrl}/scripts/VAP.yaml -O ${globals.vap_dir}/VAP.yaml;
+      wget ${baseUrl}/scripts/VAP_user.yaml -O ${globals.vap_dir}/VAP_user.yaml;
+      wget ${baseUrl}/scripts/infra.sh -O ${globals.vap_dir}/infra.sh;
+      wget ${baseUrl}/scripts/project.sh -O ${globals.vap_dir}/project.sh;
+      wget ${baseUrl}/scripts/user.sh -O ${globals.vap_dir}/user.sh;
+      wget ${baseUrl}/scripts/vap.sh -O ${globals.vap_dir}/vap.sh;
 
   installOSclient: 
     - cmd[cp]: |- 
@@ -267,41 +278,20 @@ actions:
         pip install python-heatclient
 
   create:
-    - log: VAP Stack Name - ${settings.vap_stack_name}
-    - log: RAM&CPU Infra - ${settings.infra_cpu_ram}
-    - log: RAM&CPU User - ${settings.user_cpu_ram}
-    - log: User Node Count - ${settings.user_node_count}
-    - log: Subnet - ${settings.subnet}
-    - log: Image Name - ${settings.image_name}
-    - test
-    - getWebinstallerLink
-    - script: |
-        return {
-          type: "success",
-          message: "Web Installer Link: [${globals.webinstaller_link}](${globals.webinstaller_link})"
-        }
-
-  test: 
     - cmd[cp]: |-
-        source ${globals.vap_settings} && ${globals.openstack} stack create ${settings.vap_stack_name} -t VAP.yaml \
-        --parameter "image=${settings.image_name}" \
-        --parameter "user_hosts_count=${settings.user_node_count}" \
-        --parameter "public_network=public" \
-        --parameter "public_subnet=${settings.subnet}" \
-        --parameter "infra_flavor=${settings.infra_cpu_ram}" \
-        --parameter "user_flavor=${settings.user_cpu_ram}" \
-        --parameter "infra_root_volume_size=${settings.infra_os_storage_size}" \
-        --parameter "user_root_volume_size=${settings.user_os_storage_size}" \
-        --parameter "infra_vz_volume_size=${settings.infra_vz_storage_size}" \
-        --parameter "user_vz_volume_size=${settings.user_vz_storage_size}" \
-        --parameter "infra_swap_volume_size=8" \
-        --parameter "user_swap_volume_size=8" \
-        --parameter "key_name=vap-installer-demo" \
-        --wait
-
-  getWebinstallerLink:
+        bash ${globals.vap_dir}/vap.sh create \
+        --infra-flavor=${settings.infra_cpu_ram} \
+        --user-flavor=${settings.user_cpu_ram} \
+        --subnet=${settings.subnet} \
+        --image=${settings.image_name} \
+        --user-host-count=${settings.user_node_count} \
+        --infra-root-size=${settings.infra_os_storage_size} \
+        --infra-vz-size=${settings.infra_vz_storage_size} \
+        --user-root-size=${settings.user_os_storage_size} \
+        --user-vz-size=${settings.user_vz_storage_size} \
+        --format=json
     - script: |
-        var command = "source ${globals.vap_settings} && ${globals.openstack} stack output show ${settings.vap_stack_name} --all -f json";
-        var resp = api.env.control.ExecCmdById('${env.envName}', session, '${nodes.cp.master.id}', toJSON([{ "command": command }]), true).responses[0].out;
-        var webinstaller_link = JSON.parse(resp).webinstaller_link;
-        return {result: 0, onAfterReturn:{ setGlobals:{ webinstaller_link: JSON.parse(webinstaller_link).output_value }}}
+        var resp = JSON.parse(${response.out});
+        if (resp.result == 100) return { type: "warning", message: resp.out };
+        if (resp.result == 99) return { result: 99 };
+        return { type: "success", message: resp.out };
