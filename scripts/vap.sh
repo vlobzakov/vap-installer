@@ -306,6 +306,17 @@ configure(){
     esac
   done
 
+  if [ -z "${PROJECT_DOMAIN}" ] || [ -z "${USER_DOMAIN}" ] || \
+     [ -z "${PROJECT}" ] ||  [ -z "${USERNAME}" ] || \
+     [ -z "${PASSWORD}" ] ||  [ -z "${URL}" ] || \
+     [ -z "${VAP_STACK_NAME}" ]; then
+
+      echo "Not all arguments passed!"
+      usage
+      exit 1;
+
+  fi
+
   echo "export OS_PROJECT_DOMAIN_NAME=${PROJECT_DOMAIN}" > ${VAP_ENVS};
   echo "export OS_USER_DOMAIN_NAME=${USER_DOMAIN}" >> ${VAP_ENVS};
   echo "export OS_PROJECT_NAME=${PROJECT}" >> ${VAP_ENVS};
@@ -396,6 +407,17 @@ create(){
     esac
   done
 
+  if [ -z "${IMAGE}" ] || [ -z "${USER_HOST_COUNT}" ] || \
+     [ -z "${SUBNET}" ] ||  [ -z "${USER_FLAVOR}" ] || \
+     [ -z "${INFRA_FLAVOR}" ] ||  [ -z "${INFRA_ROOT_SIZE}" ] || \
+     [ -z "${USER_ROOT_SIZE}" ] ||  [ -z "${INFRA_VZ_SIZE}" ] || [ -z "${USER_VZ_SIZE}" ]; then
+
+      echo "Not all arguments passed!"
+      usage
+      exit 1;
+
+  fi
+
   _getValueById(){
     local id="$1"
     local arg="$2"
@@ -434,6 +456,47 @@ create(){
 
 }
 
+usage() {
+SCRIPTNAME=$(basename "$BASH_SOURCE")
+echo " USAGE:"
+echo "   CONFIGURE VHI CLUSTER DETAILS:"
+echo "       COMMAND:  "
+echo "             $SCRIPTNAME configure --project-domain=[PROJECT_DOMAIN] --user-domain=[USER_DOMAIN] --project=[PROJECT] --username=[USERNAME] --password=[PASSWORD] --url=[URL] --vap-stack-name=[STACK NAME] "
+echo "       ARGUMENTS:    "
+echo "             --project-domain - VHI cluster project name the user account belongs to"
+echo "             --user-domain - VHI cluster project name the user account belongs to"
+echo "             --project - VHI cluster project name the user account belongs to"
+echo "             --username - VHI cluster account username"
+echo "             --password - VHI cluster account password"
+echo "             --url - VHI cluster API endpoint URL"
+echo "             --vap-stack-name - Specify VHI cluster API endpoint URL"
+echo
+echo "        NOTICE:"
+echo "              - notice1."
+echo "                notice2."
+echo "                notice3"
+echo
+echo "   CREATE NEW VAP:"
+echo "       COMMAND:  "
+echo "             $SCRIPTNAME create --infra-flavor=1 --user-flavor=1 --subnet=1 --image=2 --user-host-count=1 --infra-root-size=100 --infra-vz-size=400 --user-root-size=100 --user-vz-size=800 "
+echo "       ARGUMENTS:    "
+echo "             --infra-flavor - ID of nfra node flavor "
+echo "             --user-flavor - ID of User node flavor"
+echo "             --subnet - ID of public subnet"
+echo "             --image - ID of VAP image available on VHI cluster"
+echo "             --user-host-count - Number of user host nodes to be created"
+echo "             --infra-root-size - Infra node storage volume size in GB"
+echo "             --infra-vz-size - Infra node storage volume size in GB"
+echo "             --user-root-size - User node storage volume size in GB"
+echo "             --user-vz-size - User node  storage volume size in GB"
+echo
+echo "        NOTICE:"
+echo "              - notice1."
+echo "                notice2."
+echo "                notice3"
+echo
+}
+
 case ${1} in
     configure)
       configure "$@"
@@ -442,4 +505,7 @@ case ${1} in
     create)
       create "$@"
       ;;
+    *)
+      echo "Please use $(basename "$BASH_SOURCE") configure or $(basename "$BASH_SOURCE") create"
+      usage
 esac
