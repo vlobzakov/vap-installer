@@ -16,10 +16,17 @@ USER_FLAVORS_JSON="$BASE_DIR/userFlavors.json"
 IMAGES_JSON="$BASE_DIR/images.json"
 SUBNETS_JSON="$BASE_DIR/subnets.json"
 
-MIN_INFRA_VCPU=8
-MIN_INFRA_RAM=32000
-MIN_USER_VCPU=12
-MIN_USER_RAM=48000
+###For production
+#MIN_INFRA_VCPU=8
+#MIN_INFRA_RAM=32000
+#MIN_USER_VCPU=12
+#MIN_USER_RAM=48000
+
+### For testing
+MIN_INFRA_VCPU=1
+MIN_INFRA_RAM=1
+MIN_USER_VCPU=1
+MIN_USER_RAM=4
 
 [[ -f "/var/log/installer.log" ]] && RUN_LOG="/var/log/installer.log"
 
