@@ -20,11 +20,23 @@ settings:
     submitUnchanged: true
     fields: 
       - type: string 
+        name: vhi_proj_domain_name 
+        caption: Project Domain Name 
+        tooltip: "<span>Specify VHI project domain name you will use to create VMs in</span>"
+        required: true
+
+      - type: string 
+        name: vhi_user_domain_name 
+        caption: User Domain Name 
+        tooltip: "<span>Specify VHI user domain name you will use to create VMs in</span>"
+        required: true
+
+      - type: string 
         name: vhi_proj_name 
-        caption: VHI Project Name 
+        caption: Project Name 
         tooltip: "<span>Specify VHI project name you will use to create VMs in</span>"
         required: true
-        value: cmp
+
       - type: string 
         name: vhi_username 
         caption: Username 
@@ -40,7 +52,7 @@ settings:
         
       - type: string 
         name: vhi_url 
-        caption: VHI URL 
+        caption: URL 
         tooltip: "<span>Specify VHI cluster API endpoint URL</span>"
         required: true
         
@@ -249,8 +261,8 @@ actions:
   configure:
     - cmd[cp]: |-
         bash ${globals.vap_dir}/vap.sh configure \
-        --project-domain=${settings.vhi_proj_name} \
-        --user-domain=${settings.vhi_proj_name} \
+        --project-domain=${settings.vhi_proj_domain_name} \
+        --user-domain=${settings.vhi_user_domain_name} \
         --project=${settings.vhi_proj_name} \
         --username=${settings.vhi_username} \
         --password=${settings.vhi_password} \
