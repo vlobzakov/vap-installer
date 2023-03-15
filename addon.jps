@@ -4,7 +4,7 @@ id: vap-installer-addon
 targetEditions: any 
 logo: /images/logo-small.png
 description: Provision VHI infrastructure and deploy a new VAP on it
-baseUrl: https://raw.githubusercontent.com/sych74/vap-installer/main
+baseUrl: https://raw.githubusercontent.com/vlobzakov/vap-installer/main
 
 targetNodes:
   nodeType:
